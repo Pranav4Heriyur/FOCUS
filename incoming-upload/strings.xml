@@ -1,4 +1,0 @@
-<resources>
-    <string name="app_name">Focus</string>
-    <string name="accessibility_service_description">Lets Focus block distracting apps during a focus session.</string>
-</resources>
