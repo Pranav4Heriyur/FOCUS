@@ -10,7 +10,7 @@ import java.time.LocalDate
 
 class StudyLogicTest {
     @Test fun marksAndAccuracy() {
-        assertEquals(112, StudyLogic.marks(29, 11))
+        assertEquals(105, StudyLogic.marks(29, 11)) // 4*29 - 11
         assertEquals(73, StudyLogic.accPct(29, 11)) // 72.5 rounds half up
         assertEquals(0, StudyLogic.accPct(0, 0))
         assertEquals(-3, StudyLogic.marks(0, 3))
