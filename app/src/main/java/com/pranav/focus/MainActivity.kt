@@ -167,26 +167,30 @@ class MainActivity : ComponentActivity() {
                     onHome = { goHome() },
                 )
                 else -> {
-                    when (screen) {
-                        Screen.Home -> HomeScreen { go(it) }
-                        Screen.Focus -> FocusStartScreen { go(it) }
-                        Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
-                        Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
-                        Screen.Profile -> com.pranav.focus.ui.ProfileScreen2 { go(it) }
-                        Screen.Apps -> AppsScreen { back() }
-                        Screen.Callers -> CallersScreen { back() }
-                        Screen.Setup -> SetupScreen({ back() }, reqNotif, reqRole)
-                        Screen.Rules -> RulesScreen({ back() }, { go(Screen.NewRule) })
-                        Screen.NewRule -> NewRuleScreen { back() }
-                        Screen.Mirror -> com.pranav.focus.ui.MirrorScreen { back() }
-                        Screen.Jar -> com.pranav.focus.ui.JarScreen { back() }
-                        Screen.Rank -> com.pranav.focus.ui.RankScreen { back() }
-                        Screen.Connections -> com.pranav.focus.ui.ConnectionsScreen { back() }
-                        Screen.Security -> com.pranav.focus.ui.SecurityScreen { back() }
-                        Screen.TimeBank -> TimeBankScreen({ back() }, { go(Screen.Rules) }, { go(Screen.Focus) })
-                    }
-                    if (screen in TAB_SCREENS) {
-                        Box(Modifier.align(Alignment.BottomCenter)) { TabBar(screen) { go(it) } }
+                    val showBar = screen in TAB_SCREENS
+                    androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            when (screen) {
+                                Screen.Home -> HomeScreen { go(it) }
+                                Screen.Focus -> FocusStartScreen { go(it) }
+                                Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
+                                Screen.Workout -> PlaceholderScreen("Workout", "Workout screen is not built yet.")
+                                Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
+                                Screen.Profile -> com.pranav.focus.ui.ProfileScreen2 { go(it) }
+                                Screen.Apps -> AppsScreen { back() }
+                                Screen.Callers -> CallersScreen { back() }
+                                Screen.Setup -> SetupScreen({ back() }, reqNotif, reqRole)
+                                Screen.Rules -> RulesScreen({ back() }, { go(Screen.NewRule) })
+                                Screen.NewRule -> NewRuleScreen { back() }
+                                Screen.Mirror -> com.pranav.focus.ui.MirrorScreen { back() }
+                                Screen.Jar -> com.pranav.focus.ui.JarScreen { back() }
+                                Screen.Rank -> com.pranav.focus.ui.RankScreen { back() }
+                                Screen.Connections -> com.pranav.focus.ui.ConnectionsScreen { back() }
+                                Screen.Security -> com.pranav.focus.ui.SecurityScreen { back() }
+                                Screen.TimeBank -> TimeBankScreen({ back() }, { go(Screen.Rules) }, { go(Screen.Focus) })
+                            }
+                        }
+                        if (showBar) TabBar(screen) { go(it) }
                     }
                 }
             }
