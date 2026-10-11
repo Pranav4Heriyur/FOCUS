@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.pranav.focus"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.pranav.focus"
