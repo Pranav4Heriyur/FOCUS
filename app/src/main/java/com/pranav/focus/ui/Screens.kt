@@ -136,7 +136,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        StravaCard()
+        StravaHero(go)
         Spacer(Modifier.height(12.dp))
         FocusCard(Modifier.fillMaxWidth(), onClick = { go(Screen.TimeBank) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -166,43 +166,6 @@ private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> U
                 Modifier.clip(CircleShape).then(if (sel) Modifier.background(C.White) else Modifier)
                     .clickable { onSelect(i) }.padding(horizontal = 20.dp, vertical = 8.dp),
             ) { Text(o, color = if (sel) C.Black else C.Text2, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
-        }
-    }
-}
-
-/** Strava hero. Real runs arrive with the Strava connection; until then it is an honest empty state. */
-@Composable
-private fun StravaCard() {
-    var mode by remember { mutableIntStateOf(0) }
-    val shape = RoundedCornerShape(28.dp)
-    Column(Modifier.fillMaxWidth().clip(shape).background(C.Card).border(1.dp, C.Hairline, shape)) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconTile(if (mode == 0) R.drawable.ic_directions_run else R.drawable.ic_directions_bike, size = 44.dp)
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(if (mode == 0) "Latest run" else "Latest ride", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Text("Strava not connected", color = C.Text2, fontSize = 13.sp)
-            }
-            Segmented(listOf("Run", "Ride"), mode) { mode = it }
-        }
-        Box(Modifier.fillMaxWidth().height(170.dp).background(Color(0xFF070708)), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val step = 28.dp.toPx()
-                var x = 0f
-                while (x < size.width) { drawLine(Color.White.copy(alpha = 0.04f), Offset(x, 0f), Offset(x + 40f, size.height), 1f); x += step }
-                var y = 0f
-                while (y < size.height) { drawLine(Color.White.copy(alpha = 0.04f), Offset(0f, y), Offset(size.width, y + 14f), 1f); y += step }
-                val path = Path().apply {
-                    moveTo(size.width * 0.1f, size.height * 0.7f)
-                    cubicTo(size.width * 0.3f, size.height * 0.9f, size.width * 0.35f, size.height * 0.3f, size.width * 0.55f, size.height * 0.4f)
-                    cubicTo(size.width * 0.7f, size.height * 0.5f, size.width * 0.75f, size.height * 0.2f, size.width * 0.9f, size.height * 0.35f)
-                }
-                drawPath(path, Color.White.copy(alpha = 0.10f), style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
-                drawPath(path, Color.White.copy(alpha = 0.28f), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-            }
-            Text("Connect Strava to see your route here", color = C.Text2, fontSize = 14.sp)
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            BigStat("—", "km"); BigStat("—", "/km"); BigStat("—", "time")
         }
     }
 }
@@ -546,58 +509,6 @@ fun AppsScreen(back: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun CallersScreen(back: () -> Unit) {
-    val ctx = LocalContext.current
-    val store = remember { Store.get(ctx) }
-    var list by remember { mutableStateOf(store.callers) }
-    var only by remember { mutableStateOf(store.callersOnly) }
-    var name by remember { mutableStateOf("") }
-    var number by remember { mutableStateOf("") }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        ScreenHeader("Allowed callers", back, "During a session, only these numbers can ring you.")
-        FocusCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Only these numbers can ring", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Needs the call-screening role (Setup).", color = C.Text2, fontSize = 14.sp)
-                }
-                FocusSwitch(only) { only = it; store.callersOnly = it }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        list.forEach { c ->
-            FocusCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconTile(R.drawable.ic_person, size = 44.dp)
-                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(c.name, color = C.White, fontSize = 17.sp)
-                        Text(c.number, color = C.Text2, fontSize = 14.sp)
-                    }
-                    Box(Modifier.clickable { list = list - c; store.callers = list }.padding(8.dp)) { Ico(R.drawable.ic_close, 20.dp, C.Text2) }
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Caps("Add a number")
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(), colors = fieldColors())
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            number, { number = it }, label = { Text("Phone number") }, singleLine = true, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), colors = fieldColors(),
-        )
-        Spacer(Modifier.height(12.dp))
-        PrimaryButton("Add", enabled = name.isNotBlank() && number.filter { it.isDigit() }.length >= 5) {
-            list = list + Caller(name.trim(), number.trim())
-            store.callers = list
-            name = ""; number = ""
-        }
-        Spacer(Modifier.height(32.dp))
     }
 }
 

@@ -23,6 +23,8 @@ object AppState {
     var tick by mutableStateOf(0)
     var summary by mutableStateOf<SessionSummary?>(null)
     var blockedPkg by mutableStateOf<String?>(null)
+    var locked by mutableStateOf(false)
+    var openMirror by mutableStateOf(false)
     var dataTick by mutableStateOf(0)
 
     var a11yOn by mutableStateOf(false)
@@ -72,6 +74,7 @@ object SessionController {
         s.endSession()
         val earned = s.recordCompleted(minutes)
         Earning.evaluate(ctx)
+        if (com.pranav.focus.net.Notion.configured(ctx)) com.pranav.focus.net.Notion.pushAsync(ctx, "Focus · $minutes min · $subject", "Completed a locked $minutes-minute focus session ($subject). Streak: ${s.streak} days. XP: ${s.xp}.", report = false)
         ctx.stopService(Intent(ctx, FocusService::class.java))
         AppState.summary = SessionSummary(minutes, subject, earned, com.pranav.focus.data.Rewards.xpForSession(minutes), s.streak)
         AppState.refresh(ctx)

@@ -231,6 +231,11 @@ private fun ExitSheet(percent: Int, onDismiss: () -> Unit) {
                     color = C.White, fontSize = 15.sp, lineHeight = 21.sp, modifier = Modifier.weight(1f),
                 )
             }
+            val win = remember { store.jar.randomOrNull() }
+            if (win != null) {
+                Spacer(Modifier.height(12.dp))
+                Text("Remember: ${win.title}", color = C.Text2, fontSize = 14.sp, modifier = Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(20.dp))
             HoldRing(ExitRules.HOLD_SECONDS, holdDone) { holdDone = true }
             Spacer(Modifier.height(16.dp))

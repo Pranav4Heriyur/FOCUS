@@ -79,6 +79,7 @@ class FocusService : Service() {
 class BootReceiver : android.content.BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val s = Store.get(context)
+        Reminder.schedule(context)
         if (s.sessionActive && s.remainingMs() > 0) {
             androidx.core.content.ContextCompat.startForegroundService(context, Intent(context, FocusService::class.java))
         }

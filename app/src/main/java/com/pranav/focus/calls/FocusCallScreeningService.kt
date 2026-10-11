@@ -12,7 +12,8 @@ class FocusCallScreeningService : CallScreeningService() {
         val incoming = details.callDirection == Call.Details.DIRECTION_INCOMING
         val number = details.handle?.schemeSpecificPart
         val block = incoming && store.sessionActive && store.callersOnly &&
-            !CallMatcher.matches(number, store.callers.map { it.number })
+            !CallMatcher.matches(number, store.callers.filter { it.enabled }.map { it.number })
+        if (block) store.addBlockedCall()
         val response = CallResponse.Builder().apply {
             if (block) {
                 setDisallowCall(true)

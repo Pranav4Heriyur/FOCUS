@@ -53,6 +53,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Store.get(this).ensureDefaults(Allowed.DEFAULT_PACKAGES.filter { Allowed.isInstalled(this, it) }.toSet())
         AppState.blockedPkg = intent?.getStringExtra("blocked_pkg")
+        AppState.locked = Store.get(this).biometricLock
+        com.pranav.focus.net.Strava.handleRedirect(this, intent?.data)
+        com.pranav.focus.lock.Reminder.schedule(this)
         AppState.refresh(this)
         setContent { FocusTheme { Root() } }
     }
@@ -61,11 +64,44 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.getStringExtra("blocked_pkg")?.let { AppState.blockedPkg = it }
+        com.pranav.focus.net.Strava.handleRedirect(this, intent.data)
         AppState.refresh(this)
+    }
+
+    private var bgAt = 0L
+
+    override fun onStop() {
+        super.onStop()
+        bgAt = android.os.SystemClock.elapsedRealtime()
+        val st = Store.get(this)
+        if (st.biometricLock && st.lockOnExit && !AppState.active) AppState.locked = true
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val st = Store.get(this)
+        if (st.biometricLock && !AppState.locked && bgAt > 0 && st.autoLockSeconds >= 0 &&
+            android.os.SystemClock.elapsedRealtime() - bgAt > st.autoLockSeconds * 1000L) AppState.locked = true
+    }
+
+    private fun promptUnlock() {
+        val info = android.hardware.biometrics.BiometricPrompt.Builder(this)
+            .setTitle("Unlock Focus")
+            .setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .build()
+        info.authenticate(android.os.CancellationSignal(), mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                AppState.locked = false
+            }
+        })
     }
 
     override fun onResume() {
         super.onResume()
+        if (Store.get(this).hideInRecents) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (intent?.getStringExtra("open") == "mirror") { intent.removeExtra("open"); AppState.openMirror = true }
         Earning.evaluate(this)
         AppState.dataTick++
         AppState.refresh(this)
@@ -91,6 +127,12 @@ class MainActivity : ComponentActivity() {
         }
         fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) else if (stack.last() != Screen.Home) { stack.clear(); stack.add(Screen.Home) } }
 
+        androidx.compose.runtime.LaunchedEffect(AppState.openMirror) {
+            if (AppState.openMirror) { AppState.openMirror = false; go(Screen.Mirror) }
+        }
+        androidx.compose.runtime.LaunchedEffect(AppState.locked, active) {
+            if (AppState.locked && !active) promptUnlock()
+        }
         BackHandler(enabled = active) { /* no exit during a session */ }
         BackHandler(enabled = !active && blocked != null) { goHome() }
         BackHandler(enabled = !active && blocked == null && summary == null && screen != Screen.Home) { back() }
@@ -117,6 +159,7 @@ class MainActivity : ComponentActivity() {
                     onDone = { AppState.summary = null; go(Screen.Home) },
                     onLog = { AppState.summary = null; go(Screen.Study) },
                 )
+                AppState.locked && store.biometricLock -> com.pranav.focus.ui.LockScreen { promptUnlock() }
                 !setupDone -> SetupScreen(null, reqNotif, reqRole, onContinue = { store.setupDone = true; setupDone = true })
                 blocked != null -> BlockedScreen(
                     blocked,
@@ -139,8 +182,8 @@ class MainActivity : ComponentActivity() {
                         Screen.Mirror -> com.pranav.focus.ui.MirrorScreen { back() }
                         Screen.Jar -> com.pranav.focus.ui.JarScreen { back() }
                         Screen.Rank -> com.pranav.focus.ui.RankScreen { back() }
-                        Screen.Connections -> PlaceholderScreen("Connections", "Strava and Notion arrive in the next build.")
-                        Screen.Security -> PlaceholderScreen("Security", "Biometric lock arrives in the next build.")
+                        Screen.Connections -> com.pranav.focus.ui.ConnectionsScreen { back() }
+                        Screen.Security -> com.pranav.focus.ui.SecurityScreen { back() }
                         Screen.TimeBank -> TimeBankScreen({ back() }, { go(Screen.Rules) }, { go(Screen.Focus) })
                     }
                     if (screen in TAB_SCREENS) {
