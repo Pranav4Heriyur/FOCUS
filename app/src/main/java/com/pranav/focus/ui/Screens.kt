@@ -64,7 +64,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.cos
 import kotlin.math.sin
 
-enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup, Rules, NewRule, TimeBank }
+enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup, Rules, NewRule, TimeBank, Mirror, Jar, Rank, Connections, Security }
 
 val TAB_SCREENS = listOf(Screen.Home, Screen.Study, Screen.Stats, Screen.Profile)
 
@@ -479,33 +479,7 @@ private fun MinutePicker(value: Int, onDelta: (Int) -> Unit) {
 // Profile + placeholders
 // --------------------------------------------------------------------------------------
 @Composable
-fun ProfileScreen(go: (Screen) -> Unit) {
-    val ctx = LocalContext.current
-    val store = remember { Store.get(ctx) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 100.dp)) {
-        ScreenHeader("Profile", null)
-        FocusCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                ProfileStat("${store.xp}", "XP")
-                ProfileStat("${store.streak}", "Day streak")
-                ProfileStat("${store.totalFocusMinutes / 60}h ${store.totalFocusMinutes % 60}m", "Focused")
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        ProfileRow(R.drawable.ic_hourglass_top, "Time Bank", "${store.bankMinutes} min available") { go(Screen.TimeBank) }
-        Spacer(Modifier.height(10.dp))
-        ProfileRow(R.drawable.ic_tune, "App rules", "${store.appRules.size} limits · ${store.unlockRules.size} unlock rules") { go(Screen.Rules) }
-        Spacer(Modifier.height(10.dp))
-        ProfileRow(R.drawable.ic_grid_view, "Allowed apps", "${store.allowedApps.size} chosen + Phone") { go(Screen.Apps) }
-        Spacer(Modifier.height(10.dp))
-        ProfileRow(R.drawable.ic_call, "Allowed callers", "${store.callers.size} numbers") { go(Screen.Callers) }
-        Spacer(Modifier.height(10.dp))
-        ProfileRow(R.drawable.ic_shield, "Setup and permissions", if (AppState.coreReady) "Lock ready" else "Action needed") { go(Screen.Setup) }
-    }
-}
-
-@Composable
-private fun ProfileStat(v: String, l: String) {
+fun ProfileStat(v: String, l: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(v, color = C.White, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
         Caps(l)
@@ -513,7 +487,7 @@ private fun ProfileStat(v: String, l: String) {
 }
 
 @Composable
-private fun ProfileRow(icon: Int, title: String, sub: String, onClick: () -> Unit) {
+fun ProfileRow(icon: Int, title: String, sub: String, onClick: () -> Unit) {
     FocusCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconTile(icon)
