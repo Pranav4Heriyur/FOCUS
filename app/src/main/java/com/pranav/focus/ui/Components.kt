@@ -98,6 +98,7 @@ fun FocusSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
 }
 
 /** iOS-style snapping wheel. Value index = first visible item (two blank rows above and below). */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun Wheel(values: List<String>, index: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
     val h = 44.dp
