@@ -24,7 +24,7 @@ jobs:
         run: |
           set -o pipefail
           gradle --no-daemon testDebugUnitTest assembleDebug 2>&1 | tee build.log || {
-            msg=$(grep -E -A16 "^e: |issues were found|AAPT|error:" build.log | head -70 | tr '\n' '|')
+            msg=$(grep -E -A12 "^e: |issues were found|AAPT|error:|What went wrong|FAILED" build.log | head -90 | tr '\n' '|')
             echo "::error::${msg:0:3500}"
             exit 1
           }
