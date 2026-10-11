@@ -37,7 +37,6 @@ import com.pranav.focus.ui.FocusStartScreen
 import com.pranav.focus.ui.FocusTheme
 import com.pranav.focus.ui.HomeScreen
 import com.pranav.focus.ui.PlaceholderScreen
-import com.pranav.focus.ui.ProfileScreen
 import com.pranav.focus.ui.Screen
 import com.pranav.focus.ui.SessionScreen
 import com.pranav.focus.ui.SetupScreen
