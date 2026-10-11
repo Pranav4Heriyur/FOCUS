@@ -64,41 +64,9 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.cos
 import kotlin.math.sin
 
-enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup, Rules, NewRule, TimeBank, Mirror, Jar, Rank, Connections, Security }
+enum class Screen { Home, Focus, Study, Workout, Stats, TimeBank, Profile, Apps, Callers, Setup, Rules, NewRule, Mirror, Jar, Rank, Connections, Security }
 
-val TAB_SCREENS = listOf(Screen.Home, Screen.Study, Screen.Stats, Screen.Profile)
-
-// --------------------------------------------------------------------------------------
-// Tab bar
-// --------------------------------------------------------------------------------------
-@Composable
-fun TabBar(current: Screen, onSelect: (Screen) -> Unit) {
-    val tabs = listOf(
-        Triple(Screen.Home, "Home", R.drawable.ic_home),
-        Triple(Screen.Focus, "Focus", R.drawable.ic_adjust),
-        Triple(Screen.Study, "Study", R.drawable.ic_menu_book),
-        Triple(Screen.Stats, "Stats", R.drawable.ic_bar_chart),
-        Triple(Screen.Profile, "Profile", R.drawable.ic_person),
-    )
-    Row(
-        Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp).fillMaxWidth().height(64.dp)
-            .clip(CircleShape).background(C.Card.copy(alpha = 0.94f)).border(1.dp, C.Hairline, CircleShape).padding(5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        tabs.forEach { (screen, label, icon) ->
-            val sel = screen == current
-            Column(
-                Modifier.weight(1f).fillMaxSize().clip(CircleShape).then(if (sel) Modifier.background(C.White) else Modifier)
-                    .clickable { onSelect(screen) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Ico(icon, 24.dp, if (sel) C.Black else C.Text2)
-                Text(label, color = if (sel) C.Black else C.Text2, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
+val TAB_SCREENS = listOf(Screen.Home, Screen.Focus, Screen.Study, Screen.Workout, Screen.Stats, Screen.TimeBank, Screen.Profile)
 
 // --------------------------------------------------------------------------------------
 // Home
