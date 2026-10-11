@@ -29,9 +29,12 @@ object Allowed {
         ctx.getSystemService(InputMethodManager::class.java)
             ?.enabledInputMethodList?.map { it.packageName }?.toSet() ?: emptySet()
 
+    /** Surfaces that are never blocked by any rule: this app, system UI, phone/dialer, keyboards. */
+    fun isCore(ctx: Context, pkg: String): Boolean =
+        pkg == ctx.packageName || pkg in ALWAYS || pkg == dialerPackage(ctx) || pkg in imePackages(ctx)
+
     fun isAllowed(ctx: Context, store: Store, pkg: String): Boolean =
-        pkg == ctx.packageName || pkg in ALWAYS || pkg in store.allowedApps ||
-            pkg == dialerPackage(ctx) || pkg in imePackages(ctx)
+        isCore(ctx, pkg) || pkg in store.allowedApps
 
     /** Every app with a launcher icon, sorted by name. */
     fun launchableApps(ctx: Context): List<AppEntry> {

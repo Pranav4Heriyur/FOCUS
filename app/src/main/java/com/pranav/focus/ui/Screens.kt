@@ -64,7 +64,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.cos
 import kotlin.math.sin
 
-enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup }
+enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup, Rules, NewRule, TimeBank }
 
 val TAB_SCREENS = listOf(Screen.Home, Screen.Study, Screen.Stats, Screen.Profile)
 
@@ -137,6 +137,17 @@ fun HomeScreen(go: (Screen) -> Unit) {
         }
         Spacer(Modifier.height(16.dp))
         StravaCard()
+        Spacer(Modifier.height(12.dp))
+        FocusCard(Modifier.fillMaxWidth(), onClick = { go(Screen.TimeBank) }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTile(R.drawable.ic_hourglass_top)
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text("Time Bank", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${store.bankMinutes} min to spend · resets at midnight", color = C.Text2, fontSize = 13.sp)
+                }
+                Ico(R.drawable.ic_chevron_right, 22.dp, C.Text3)
+            }
+        }
         Spacer(Modifier.height(12.dp))
         BalanceCard(store)
         Spacer(Modifier.height(12.dp))
@@ -481,6 +492,10 @@ fun ProfileScreen(go: (Screen) -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
+        ProfileRow(R.drawable.ic_hourglass_top, "Time Bank", "${store.bankMinutes} min available") { go(Screen.TimeBank) }
+        Spacer(Modifier.height(10.dp))
+        ProfileRow(R.drawable.ic_tune, "App rules", "${store.appRules.size} limits · ${store.unlockRules.size} unlock rules") { go(Screen.Rules) }
+        Spacer(Modifier.height(10.dp))
         ProfileRow(R.drawable.ic_grid_view, "Allowed apps", "${store.allowedApps.size} chosen + Phone") { go(Screen.Apps) }
         Spacer(Modifier.height(10.dp))
         ProfileRow(R.drawable.ic_call, "Allowed callers", "${store.callers.size} numbers") { go(Screen.Callers) }
@@ -613,7 +628,7 @@ fun CallersScreen(back: () -> Unit) {
 }
 
 @Composable
-fun SetupScreen(back: () -> Unit, requestNotif: () -> Unit, requestRole: () -> Unit) {
+fun SetupScreen(back: (() -> Unit)?, requestNotif: () -> Unit, requestRole: () -> Unit, onContinue: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     fun open(i: Intent) = ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     val pkgUri = Uri.parse("package:${ctx.packageName}")
@@ -644,6 +659,10 @@ fun SetupScreen(back: () -> Unit, requestNotif: () -> Unit, requestRole: () -> U
             )
             Spacer(Modifier.height(12.dp))
             GhostButton("Open Focus app info") { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkgUri)) }
+        }
+        if (onContinue != null) {
+            Spacer(Modifier.height(16.dp))
+            PrimaryButton(if (AppState.coreReady) "Continue" else "Continue without lock") { onContinue() }
         }
         Spacer(Modifier.height(32.dp))
     }

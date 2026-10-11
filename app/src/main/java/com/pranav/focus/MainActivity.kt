@@ -22,6 +22,13 @@ import androidx.compose.ui.Modifier
 import com.pranav.focus.data.Store
 import com.pranav.focus.lock.Allowed
 import com.pranav.focus.lock.AppState
+import android.content.Intent
+import androidx.compose.runtime.mutableStateListOf
+import com.pranav.focus.lock.Earning
+import com.pranav.focus.ui.BlockedScreen
+import com.pranav.focus.ui.NewRuleScreen
+import com.pranav.focus.ui.RulesScreen
+import com.pranav.focus.ui.TimeBankScreen
 import com.pranav.focus.ui.AppsScreen
 import com.pranav.focus.ui.C
 import com.pranav.focus.ui.CallersScreen
@@ -46,28 +53,48 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Store.get(this).ensureDefaults(Allowed.DEFAULT_PACKAGES.filter { Allowed.isInstalled(this, it) }.toSet())
+        AppState.blockedPkg = intent?.getStringExtra("blocked_pkg")
         AppState.refresh(this)
         setContent { FocusTheme { Root() } }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("blocked_pkg")?.let { AppState.blockedPkg = it }
+        AppState.refresh(this)
+    }
+
     override fun onResume() {
         super.onResume()
+        Earning.evaluate(this)
+        AppState.dataTick++
         AppState.refresh(this)
+    }
+
+    private fun goHome() {
+        AppState.blockedPkg = null
+        startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     @Composable
     private fun Root() {
-        var screen by remember { mutableStateOf(Screen.Home) }
+        val store = remember { Store.get(this) }
+        var setupDone by remember { mutableStateOf(store.setupDone) }
+        val stack = remember { mutableStateListOf(Screen.Home) }
+        val screen = stack.last()
         val active = AppState.active
         val summary = AppState.summary
+        val blocked = AppState.blockedPkg
+
+        fun go(s: Screen) {
+            if (s in TAB_SCREENS || s == Screen.Focus) { stack.clear(); stack.add(s) } else stack.add(s)
+        }
+        fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) else if (stack.last() != Screen.Home) { stack.clear(); stack.add(Screen.Home) } }
 
         BackHandler(enabled = active) { /* no exit during a session */ }
-        BackHandler(enabled = !active && summary == null && screen != Screen.Home) {
-            screen = when (screen) {
-                Screen.Apps, Screen.Callers -> Screen.Focus
-                else -> Screen.Home
-            }
-        }
+        BackHandler(enabled = !active && blocked != null) { goHome() }
+        BackHandler(enabled = !active && blocked == null && summary == null && screen != Screen.Home) { back() }
 
         DisposableEffect(active) {
             if (active) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -75,35 +102,45 @@ class MainActivity : ComponentActivity() {
             onDispose { }
         }
 
+        val reqNotif = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        val reqRole = {
+            getSystemService(RoleManager::class.java)
+                ?.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+                ?.let { roleLauncher.launch(it) }
+            Unit
+        }
+
         Box(Modifier.fillMaxSize().background(C.Black)) {
             when {
                 active -> SessionScreen()
                 summary != null -> CompleteScreen(
                     summary,
-                    onDone = { AppState.summary = null; screen = Screen.Home },
-                    onLog = { AppState.summary = null; screen = Screen.Study },
+                    onDone = { AppState.summary = null; go(Screen.Home) },
+                    onLog = { AppState.summary = null; go(Screen.Study) },
+                )
+                !setupDone -> SetupScreen(null, reqNotif, reqRole, onContinue = { store.setupDone = true; setupDone = true })
+                blocked != null -> BlockedScreen(
+                    blocked,
+                    onFocus = { AppState.blockedPkg = null; go(Screen.Focus) },
+                    onBank = { AppState.blockedPkg = null; go(Screen.TimeBank) },
+                    onHome = { goHome() },
                 )
                 else -> {
                     when (screen) {
-                        Screen.Home -> HomeScreen { screen = it }
-                        Screen.Focus -> FocusStartScreen { screen = it }
+                        Screen.Home -> HomeScreen { go(it) }
+                        Screen.Focus -> FocusStartScreen { go(it) }
                         Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
                         Screen.Stats -> PlaceholderScreen("Stats", "Charts for focus, screen time, workouts and study.")
-                        Screen.Profile -> ProfileScreen { screen = it }
-                        Screen.Apps -> AppsScreen { screen = Screen.Focus }
-                        Screen.Callers -> CallersScreen { screen = Screen.Focus }
-                        Screen.Setup -> SetupScreen(
-                            back = { screen = Screen.Profile },
-                            requestNotif = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-                            requestRole = {
-                                getSystemService(RoleManager::class.java)
-                                    ?.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
-                                    ?.let { roleLauncher.launch(it) }
-                            },
-                        )
+                        Screen.Profile -> ProfileScreen { go(it) }
+                        Screen.Apps -> AppsScreen { back() }
+                        Screen.Callers -> CallersScreen { back() }
+                        Screen.Setup -> SetupScreen({ back() }, reqNotif, reqRole)
+                        Screen.Rules -> RulesScreen({ back() }, { go(Screen.NewRule) })
+                        Screen.NewRule -> NewRuleScreen { back() }
+                        Screen.TimeBank -> TimeBankScreen({ back() }, { go(Screen.Rules) }, { go(Screen.Focus) })
                     }
                     if (screen in TAB_SCREENS) {
-                        Box(Modifier.align(Alignment.BottomCenter)) { TabBar(screen) { screen = it } }
+                        Box(Modifier.align(Alignment.BottomCenter)) { TabBar(screen) { go(it) } }
                     }
                 }
             }

@@ -22,6 +22,8 @@ object AppState {
     var active by mutableStateOf(false)
     var tick by mutableStateOf(0)
     var summary by mutableStateOf<SessionSummary?>(null)
+    var blockedPkg by mutableStateOf<String?>(null)
+    var dataTick by mutableStateOf(0)
 
     var a11yOn by mutableStateOf(false)
     var overlayOn by mutableStateOf(false)
@@ -69,6 +71,7 @@ object SessionController {
         val subject = s.sessionSubject
         s.endSession()
         val earned = s.recordCompleted(minutes)
+        Earning.evaluate(ctx)
         ctx.stopService(Intent(ctx, FocusService::class.java))
         AppState.summary = SessionSummary(minutes, subject, earned, com.pranav.focus.data.Rewards.xpForSession(minutes), s.streak)
         AppState.refresh(ctx)

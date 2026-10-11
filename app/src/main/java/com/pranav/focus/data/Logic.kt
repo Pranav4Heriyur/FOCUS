@@ -1,23 +1,63 @@
 package com.pranav.focus.data
 
+import kotlin.math.max
+import kotlin.math.min
+
 /** Pure logic, no Android dependencies, so it is unit-testable. */
 object TimeBank {
-    /** Verified effort only: a completed locked session earns 1 minute per 2 focused minutes. */
-    const val EARN_RATIO = 0.5
+    /** Verified effort only: a completed locked session earns 1 minute per 5 focused minutes. */
+    const val FOCUS_DIVISOR = 5
 
     fun earnedFromFocus(focusedMinutes: Int): Int =
-        if (focusedMinutes <= 0) 0 else (focusedMinutes * EARN_RATIO).toInt()
+        if (focusedMinutes <= 0) 0 else focusedMinutes / FOCUS_DIVISOR
 
     /** Manual entries are unverified and never earn time. */
-    fun earnedFromManual(@Suppress("UNUSED_PARAMETER") minutes: Int): Int = 0
+    @Suppress("UNUSED_PARAMETER")
+    fun earnedFromManual(minutes: Int): Int = 0
+
+    /** Minutes still usable today in a locked app: capped by the daily limit and by what was unlocked. */
+    fun remaining(limitMin: Int, usedMin: Double, allocMin: Int): Int =
+        max(0.0, min(limitMin - usedMin, allocMin - usedMin)).toInt()
+
+    /** Pool minutes still free to spend: earned, minus yesterday's missed-item penalty, minus what was already unlocked. */
+    fun poolAvailable(poolEarned: Int, penalty: Int, fromPool: Int): Int =
+        (poolEarned - penalty - fromPool).coerceAtLeast(0)
 }
 
 object Rewards {
     const val XP_PER_FOCUS_MINUTE = 2
     const val QUIT_XP_PENALTY = 50
+    const val ACTION_XP = 10
+    const val RULE_XP = 20
+    const val REVIEW_ITEM_XP = 5
+    const val MISSED_ITEM_PENALTY_MIN = 10
 
     fun xpForSession(minutes: Int) = minutes.coerceAtLeast(0) * XP_PER_FOCUS_MINUTE
     fun xpAfterQuit(xp: Int) = (xp - QUIT_XP_PENALTY).coerceAtLeast(0)
+}
+
+data class Rank(val name: String, val minXp: Int, val tagline: String)
+
+object Ranks {
+    val ALL = listOf(
+        Rank("Recruit", 0, "Building the habit."),
+        Rank("Grinder", 250, "Showing up consistently."),
+        Rank("Uncommon", 500, "You do what most people don’t."),
+        Rank("Relentless", 1000, "Higher standards. No excuses."),
+        Rank("Disciplined", 2000, "Results over feelings."),
+        Rank("Elite", 4000, "A different breed."),
+        Rank("Legendary", 8000, "Inspires others."),
+    )
+
+    fun forXp(xp: Int): Rank = ALL.last { xp >= it.minXp }
+    fun next(xp: Int): Rank? = ALL.firstOrNull { it.minXp > xp }
+
+    /** 0..1 progress from the current rank threshold to the next. */
+    fun progress(xp: Int): Float {
+        val cur = forXp(xp)
+        val nxt = next(xp) ?: return 1f
+        return ((xp - cur.minXp).toFloat() / (nxt.minXp - cur.minXp)).coerceIn(0f, 1f)
+    }
 }
 
 object CallMatcher {
@@ -39,4 +79,58 @@ object ExitRules {
     const val PHRASE = "I choose distraction over my goals"
 
     fun phraseOk(input: String) = input.trim().equals(PHRASE, ignoreCase = true)
+}
+
+object Fmt {
+    fun hm(minutes: Int): String = if (minutes >= 60) "${minutes / 60}h ${minutes % 60}m" else "${minutes}m"
+
+    fun km(meters: Double, imperial: Boolean): String =
+        if (imperial) "%.1f".format(meters / 1609.344) else "%.1f".format(meters / 1000.0)
+
+    fun pace(distM: Double, movingS: Int, imperial: Boolean): String {
+        if (distM <= 0 || movingS <= 0) return "—"
+        val unit = if (imperial) 1609.344 else 1000.0
+        val secPer = movingS / (distM / unit)
+        val m = (secPer / 60).toInt()
+        val s = (secPer % 60).toInt()
+        return "%d'%02d\"".format(m, s)
+    }
+
+    fun clock(seconds: Int): String {
+        val h = seconds / 3600
+        val m = (seconds % 3600) / 60
+        val s = seconds % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    }
+}
+
+/** Decodes a Google encoded polyline (Strava route summaries) into lat/lng pairs. */
+object Polyline {
+    fun decode(encoded: String): List<Pair<Double, Double>> {
+        val out = ArrayList<Pair<Double, Double>>()
+        var index = 0
+        var lat = 0
+        var lng = 0
+        while (index < encoded.length) {
+            var result = 0
+            var shift = 0
+            var b: Int
+            do {
+                b = encoded[index++].code - 63
+                result = result or ((b and 0x1f) shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            lat += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            result = 0
+            shift = 0
+            do {
+                b = encoded[index++].code - 63
+                result = result or ((b and 0x1f) shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            lng += if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            out.add(lat / 1e5 to lng / 1e5)
+        }
+        return out
+    }
 }

@@ -1,6 +1,7 @@
 package com.pranav.focus.ui
 
 import android.app.AppOpsManager
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -17,20 +18,49 @@ object UsageHelper {
             AppOpsManager.MODE_ALLOWED
     }
 
-    /** Foreground time per app since midnight, launchable apps only, biggest first. */
-    fun today(ctx: Context): List<AppUse> {
-        val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyList()
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    fun midnight(): Long = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    private var cacheAt = 0L
+    private var cache: Map<String, Long> = emptyMap()
+
+    /** Exact foreground time per package since midnight from resume/pause events, cached ~3 s. */
+    fun usedTodayMs(ctx: Context, force: Boolean = false): Map<String, Long> {
+        val now = System.currentTimeMillis()
+        if (!force && now - cacheAt < 3_000) return cache
+        val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyMap()
+        val ev = usm.queryEvents(midnight(), now) ?: return emptyMap()
+        val e = UsageEvents.Event()
+        val open = HashMap<String, Long>()
+        val total = HashMap<String, Long>()
+        var lastFg: String? = null
+        while (ev.hasNextEvent()) {
+            ev.getNextEvent(e)
+            val p = e.packageName ?: continue
+            when (e.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> { open[p] = e.timeStamp; lastFg = p }
+                UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED ->
+                    open.remove(p)?.let { total[p] = (total[p] ?: 0L) + (e.timeStamp - it).coerceAtLeast(0) }
+            }
         }
-        val stats = usm.queryAndAggregateUsageStats(cal.timeInMillis, System.currentTimeMillis())
+        lastFg?.let { p -> open[p]?.let { total[p] = (total[p] ?: 0L) + (now - it).coerceAtLeast(0) } }
+        cache = total
+        cacheAt = now
+        return total
+    }
+
+    fun usedMin(ctx: Context, pkg: String): Double = (usedTodayMs(ctx)[pkg] ?: 0L) / 60_000.0
+
+    /** Foreground time per launchable app since midnight, biggest first. */
+    fun today(ctx: Context): List<AppUse> {
         val pm = ctx.packageManager
         val home = pm.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo?.packageName
         val labels = Allowed.launchableApps(ctx).associate { it.pkg to it.label }
-        return stats.values
-            .filter { it.totalTimeInForeground >= 60_000 && it.packageName in labels && it.packageName != home && it.packageName != ctx.packageName }
-            .sortedByDescending { it.totalTimeInForeground }
-            .map { AppUse(it.packageName, labels.getValue(it.packageName), it.totalTimeInForeground) }
+        return usedTodayMs(ctx, true).entries
+            .filter { it.value >= 60_000 && it.key in labels && it.key != home && it.key != ctx.packageName }
+            .sortedByDescending { it.value }
+            .map { AppUse(it.key, labels.getValue(it.key), it.value) }
     }
 
     fun format(ms: Long): String {
