@@ -287,7 +287,7 @@ private fun Target(name: String, value: String, frac: Float) {
 // --------------------------------------------------------------------------------------
 // A14 Stats
 // --------------------------------------------------------------------------------------
-private fun buckets(range: Int, f: (LocalDate) -> Double): Pair<List<Float>, List<String>> {
+fun buckets(range: Int, f: (LocalDate) -> Double): Pair<List<Float>, List<String>> {
     val today = LocalDate.now()
     return when (range) {
         0 -> {
@@ -307,7 +307,7 @@ private fun buckets(range: Int, f: (LocalDate) -> Double): Pair<List<Float>, Lis
 }
 
 @Composable
-private fun BarChart(values: List<Float>, labels: List<String>, height: Int = 110) {
+fun BarChart(values: List<Float>, labels: List<String>, height: Int = 110) {
     val max = (values.maxOrNull() ?: 0f).coerceAtLeast(0.0001f)
     Canvas(Modifier.fillMaxWidth().height(height.dp)) {
         val n = values.size

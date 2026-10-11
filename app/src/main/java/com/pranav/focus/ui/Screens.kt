@@ -149,6 +149,38 @@ fun HomeScreen(go: (Screen) -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FocusCard(Modifier.weight(1f), onClick = { go(Screen.Rank) }) {
+                Ico(R.drawable.ic_local_fire_department, 24.dp)
+                Text("${store.streak}", color = C.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Caps("Day streak")
+            }
+            FocusCard(Modifier.weight(1f), onClick = { go(Screen.Rank) }) {
+                Ico(R.drawable.ic_emoji_events, 24.dp)
+                Text("${store.xp}", color = C.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Caps(com.pranav.focus.data.Ranks.forXp(store.xp).name)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        FocusCard(Modifier.fillMaxWidth(), onClick = { go(Screen.Mirror) }) {
+            Text("Today’s agenda", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            val done = store.reviewDone()
+            store.agenda.take(4).forEach {
+                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Ico(if (it.id in done) R.drawable.ic_check_circle else R.drawable.ic_schedule, 20.dp, if (it.id in done) C.White else C.Text3)
+                    Text(it.title, color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(start = 10.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        FocusCard(Modifier.fillMaxWidth(), onClick = { go(Screen.Stats) }) {
+            val wk = remember(AppState.dataTick) { val m = store.focusDays(); buckets(0) { (m[it.toString()] ?: 0).toDouble() } }
+            Row { Text("Weekly focus", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(com.pranav.focus.data.Fmt.hm(wk.first.sum().toInt()), color = C.Text2, fontSize = 14.sp) }
+            Spacer(Modifier.height(10.dp))
+            BarChart(wk.first, wk.second, 80)
+        }
+        Spacer(Modifier.height(12.dp))
         BalanceCard(store)
         Spacer(Modifier.height(12.dp))
         ScreenTimeCard(onSetup = { go(Screen.Setup) })
