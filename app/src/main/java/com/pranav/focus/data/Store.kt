@@ -20,10 +20,15 @@ class Store private constructor(ctx: Context) {
 
     private fun bootCount(): Int = Settings.Global.getInt(app.contentResolver, Settings.Global.BOOT_COUNT, -1)
 
-    fun startSession(minutes: Int) {
+    val sessionName: String get() = sp.getString("s_name", "") ?: ""
+    val sessionSubject: String get() = sp.getString("s_subject", "Other") ?: "Other"
+
+    fun startSession(minutes: Int, name: String, subject: String) {
         val ms = minutes * 60_000L
         sp.edit()
             .putBoolean("s_active", true)
+            .putString("s_name", name)
+            .putString("s_subject", subject)
             .putInt("s_minutes", minutes)
             .putLong("s_end_wall", System.currentTimeMillis() + ms)
             .putLong("s_end_elapsed", SystemClock.elapsedRealtime() + ms)
@@ -68,6 +73,27 @@ class Store private constructor(ctx: Context) {
             sp.edit().putString("callers", arr.toString()).apply()
         }
 
+    var strictLock: Boolean
+        get() = sp.getBoolean("strict_lock", true)
+        set(v) = sp.edit().putBoolean("strict_lock", v).apply()
+
+    /** Who is wearing the watch: true = me, false = someone else (data ignored). */
+    var watchMe: Boolean
+        get() = sp.getBoolean("watch_me", true)
+        set(v) = sp.edit().putBoolean("watch_me", v).apply()
+
+    var lastName: String
+        get() = sp.getString("last_name", "") ?: ""
+        set(v) = sp.edit().putString("last_name", v).apply()
+
+    var lastSubject: String
+        get() = sp.getString("last_subject", "Physics") ?: "Physics"
+        set(v) = sp.edit().putString("last_subject", v).apply()
+
+    /** Verified focus minutes completed today. */
+    val todayFocusMinutes: Int
+        get() = if (sp.getString("focus_day", "") == today()) sp.getInt("focus_today", 0) else 0
+
     var lastMinutes: Int
         get() = sp.getInt("last_minutes", 25)
         set(v) = sp.edit().putInt("last_minutes", v).apply()
@@ -107,6 +133,7 @@ class Store private constructor(ctx: Context) {
         val earned = TimeBank.earnedFromFocus(minutes)
         xp += Rewards.xpForSession(minutes)
         totalFocusMinutes += minutes
+        sp.edit().putString("focus_day", today()).putInt("focus_today", todayFocusMinutes + minutes).apply()
         val last = sp.getString("streak_day", "")
         val t = today()
         if (last != t) {

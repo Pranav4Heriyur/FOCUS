@@ -11,15 +11,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pranav.focus.data.Store
 import com.pranav.focus.lock.Allowed
@@ -27,11 +25,17 @@ import com.pranav.focus.lock.AppState
 import com.pranav.focus.ui.AppsScreen
 import com.pranav.focus.ui.C
 import com.pranav.focus.ui.CallersScreen
+import com.pranav.focus.ui.CompleteScreen
+import com.pranav.focus.ui.FocusStartScreen
 import com.pranav.focus.ui.FocusTheme
 import com.pranav.focus.ui.HomeScreen
+import com.pranav.focus.ui.PlaceholderScreen
+import com.pranav.focus.ui.ProfileScreen
 import com.pranav.focus.ui.Screen
 import com.pranav.focus.ui.SessionScreen
 import com.pranav.focus.ui.SetupScreen
+import com.pranav.focus.ui.TAB_SCREENS
+import com.pranav.focus.ui.TabBar
 
 class MainActivity : ComponentActivity() {
     private val roleLauncher =
@@ -55,9 +59,15 @@ class MainActivity : ComponentActivity() {
     private fun Root() {
         var screen by remember { mutableStateOf(Screen.Home) }
         val active = AppState.active
+        val summary = AppState.summary
 
         BackHandler(enabled = active) { /* no exit during a session */ }
-        BackHandler(enabled = !active && screen != Screen.Home) { screen = Screen.Home }
+        BackHandler(enabled = !active && summary == null && screen != Screen.Home) {
+            screen = when (screen) {
+                Screen.Apps, Screen.Callers -> Screen.Focus
+                else -> Screen.Home
+            }
+        }
 
         DisposableEffect(active) {
             if (active) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -66,32 +76,37 @@ class MainActivity : ComponentActivity() {
         }
 
         Box(Modifier.fillMaxSize().background(C.Black)) {
-            if (active) {
-                SessionScreen()
-            } else when (screen) {
-                Screen.Home -> HomeScreen { screen = it }
-                Screen.Apps -> AppsScreen { screen = Screen.Home }
-                Screen.Callers -> CallersScreen { screen = Screen.Home }
-                Screen.Setup -> SetupScreen(
-                    back = { screen = Screen.Home },
-                    requestNotif = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-                    requestRole = {
-                        getSystemService(RoleManager::class.java)
-                            ?.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
-                            ?.let { roleLauncher.launch(it) }
-                    },
+            when {
+                active -> SessionScreen()
+                summary != null -> CompleteScreen(
+                    summary,
+                    onDone = { AppState.summary = null; screen = Screen.Home },
+                    onLog = { AppState.summary = null; screen = Screen.Study },
                 )
+                else -> {
+                    when (screen) {
+                        Screen.Home -> HomeScreen { screen = it }
+                        Screen.Focus -> FocusStartScreen { screen = it }
+                        Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
+                        Screen.Stats -> PlaceholderScreen("Stats", "Charts for focus, screen time, workouts and study.")
+                        Screen.Profile -> ProfileScreen { screen = it }
+                        Screen.Apps -> AppsScreen { screen = Screen.Focus }
+                        Screen.Callers -> CallersScreen { screen = Screen.Focus }
+                        Screen.Setup -> SetupScreen(
+                            back = { screen = Screen.Profile },
+                            requestNotif = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                            requestRole = {
+                                getSystemService(RoleManager::class.java)
+                                    ?.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+                                    ?.let { roleLauncher.launch(it) }
+                            },
+                        )
+                    }
+                    if (screen in TAB_SCREENS) {
+                        Box(Modifier.align(Alignment.BottomCenter)) { TabBar(screen) { screen = it } }
+                    }
+                }
             }
-        }
-
-        AppState.lastEarned?.let { earned ->
-            AlertDialog(
-                onDismissRequest = { AppState.lastEarned = null },
-                containerColor = C.Sheet,
-                title = { Text("Session complete", color = C.White) },
-                text = { Text(if (earned > 0) "You earned $earned min in your Time Bank. It expires at midnight." else "Done.", color = C.Text2) },
-                confirmButton = { TextButton(onClick = { AppState.lastEarned = null }) { Text("OK", color = C.White) } },
-            )
         }
     }
 }

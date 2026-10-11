@@ -36,7 +36,7 @@ object CallMatcher {
 
 object ExitRules {
     const val HOLD_SECONDS = 60
-    const val PHRASE = "I am choosing to quit"
+    const val PHRASE = "I choose distraction over my goals"
 
     fun phraseOk(input: String) = input.trim().equals(PHRASE, ignoreCase = true)
 }

@@ -16,9 +16,12 @@ import androidx.core.content.ContextCompat
 import com.pranav.focus.data.Store
 
 /** Observable UI state shared by the activity and the services. */
+data class SessionSummary(val minutes: Int, val subject: String, val earnedMin: Int, val xp: Int, val streak: Int)
+
 object AppState {
     var active by mutableStateOf(false)
-    var lastEarned by mutableStateOf<Int?>(null)
+    var tick by mutableStateOf(0)
+    var summary by mutableStateOf<SessionSummary?>(null)
 
     var a11yOn by mutableStateOf(false)
     var overlayOn by mutableStateOf(false)
@@ -29,6 +32,7 @@ object AppState {
     val coreReady: Boolean get() = a11yOn && overlayOn
 
     fun refresh(ctx: Context) {
+        tick++
         val s = Store.get(ctx)
         active = s.sessionActive && s.remainingMs() > 0
         a11yOn = isAccessibilityEnabled(ctx)
@@ -47,10 +51,12 @@ object AppState {
 }
 
 object SessionController {
-    fun start(ctx: Context, minutes: Int) {
+    fun start(ctx: Context, minutes: Int, name: String, subject: String) {
         val s = Store.get(ctx)
         s.lastMinutes = minutes
-        s.startSession(minutes)
+        s.lastName = name
+        s.lastSubject = subject
+        s.startSession(minutes, name, subject)
         ContextCompat.startForegroundService(ctx, Intent(ctx, FocusService::class.java))
         AppState.refresh(ctx)
     }
@@ -60,10 +66,11 @@ object SessionController {
         val s = Store.get(ctx)
         if (!s.sessionActive) return
         val minutes = s.sessionMinutes
+        val subject = s.sessionSubject
         s.endSession()
         val earned = s.recordCompleted(minutes)
         ctx.stopService(Intent(ctx, FocusService::class.java))
-        AppState.lastEarned = earned
+        AppState.summary = SessionSummary(minutes, subject, earned, com.pranav.focus.data.Rewards.xpForSession(minutes), s.streak)
         AppState.refresh(ctx)
     }
 

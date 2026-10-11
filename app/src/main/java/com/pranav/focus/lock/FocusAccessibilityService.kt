@@ -18,7 +18,7 @@ class FocusAccessibilityService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         val store = Store.get(this)
-        if (!store.sessionActive) return
+        if (!store.sessionActive || !store.strictLock) return
         if (store.remainingMs() <= 0) {
             SessionController.complete(this)
             return

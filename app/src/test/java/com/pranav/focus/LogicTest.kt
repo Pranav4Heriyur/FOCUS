@@ -32,7 +32,7 @@ class LogicTest {
     }
 
     @Test fun phraseCheck() {
-        assertTrue(ExitRules.phraseOk("  i am choosing to quit "))
+        assertTrue(ExitRules.phraseOk("  i choose distraction over my goals "))
         assertFalse(ExitRules.phraseOk("i quit"))
     }
 }
