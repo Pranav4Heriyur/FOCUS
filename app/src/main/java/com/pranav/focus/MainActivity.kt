@@ -54,7 +54,6 @@ class MainActivity : ComponentActivity() {
         Store.get(this).ensureDefaults(Allowed.DEFAULT_PACKAGES.filter { Allowed.isInstalled(this, it) }.toSet())
         AppState.blockedPkg = intent?.getStringExtra("blocked_pkg")
         AppState.locked = Store.get(this).biometricLock
-        com.pranav.focus.net.Strava.handleRedirect(this, intent?.data)
         com.pranav.focus.lock.Reminder.schedule(this)
         AppState.refresh(this)
         setContent { FocusTheme { Root() } }
@@ -64,7 +63,6 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.getStringExtra("blocked_pkg")?.let { AppState.blockedPkg = it }
-        com.pranav.focus.net.Strava.handleRedirect(this, intent.data)
         AppState.refresh(this)
     }
 
@@ -103,6 +101,7 @@ class MainActivity : ComponentActivity() {
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         if (intent?.getStringExtra("open") == "mirror") { intent.removeExtra("open"); AppState.openMirror = true }
         Earning.evaluate(this)
+        if (com.pranav.focus.net.HealthSync.connected(this)) com.pranav.focus.net.HealthSync.syncAsync(this)
         AppState.dataTick++
         AppState.refresh(this)
     }

@@ -133,4 +133,20 @@ object Polyline {
         }
         return out
     }
+
+    fun encode(pts: List<Pair<Double, Double>>): String {
+        val sb = StringBuilder()
+        var pLat = 0
+        var pLng = 0
+        fun enc(v0: Int) {
+            var v = if (v0 < 0) (v0 shl 1).inv() else v0 shl 1
+            while (v >= 0x20) { sb.append((((v and 0x1f) or 0x20) + 63).toChar()); v = v shr 5 }
+            sb.append((v + 63).toChar())
+        }
+        for ((la, ln) in pts) {
+            val a = Math.round(la * 1e5).toInt(); val b = Math.round(ln * 1e5).toInt()
+            enc(a - pLat); enc(b - pLng); pLat = a; pLng = b
+        }
+        return sb.toString()
+    }
 }

@@ -364,7 +364,7 @@ fun StatsScreen(go: (com.pranav.focus.ui.Screen) -> Unit) {
                 Text(Fmt.km(dist.first.sum() * 1000.0, store.imperial) + if (store.imperial) " mi" else " km", color = C.Text2, fontSize = 14.sp) }
             Spacer(Modifier.height(10.dp))
             BarChart(dist.first, dist.second, 90)
-            if (acts.isEmpty()) Text("Connect Strava to fill this in.", color = C.Text3, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            if (acts.isEmpty()) Text("Connect Health Connect to fill this in.", color = C.Text3, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
         Spacer(Modifier.height(12.dp))
         FocusCard(Modifier.fillMaxWidth()) {
@@ -490,7 +490,7 @@ fun ProfileScreen2(go: (Screen) -> Unit) {
         }
         Spacer(Modifier.height(16.dp))
         Caps("Connections"); Spacer(Modifier.height(6.dp))
-        ProfileRow(R.drawable.ic_link, "Connections", "Strava · Notion · Health") { go(Screen.Connections) }
+        ProfileRow(R.drawable.ic_link, "Connections", "Health Connect · Notion · Watch") { go(Screen.Connections) }
         Spacer(Modifier.height(10.dp))
         FocusCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {

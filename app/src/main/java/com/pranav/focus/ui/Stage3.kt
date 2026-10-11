@@ -59,7 +59,9 @@ import com.pranav.focus.lock.AppState
 import com.pranav.focus.net.NetState
 import com.pranav.focus.net.Notion
 import com.pranav.focus.net.Secure
-import com.pranav.focus.net.Strava
+import com.pranav.focus.net.HealthSync
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.contracts.ExerciseRouteRequestContract
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -75,7 +77,7 @@ fun StravaHero(go: (Screen) -> Unit) {
     val store = remember { Store.get(ctx) }
     var mode by remember { mutableIntStateOf(0) }
     val tick = AppState.dataTick
-    val connected = remember(tick) { Strava.connected(ctx) }
+    val connected = remember(tick) { HealthSync.connected(ctx) }
     val act = remember(mode, tick) { store.activities.firstOrNull { if (mode == 0) it.isRun else it.isRide } }
     val shape = RoundedCornerShape(28.dp)
     Column(Modifier.fillMaxWidth().clip(shape).background(C.Card).border(1.dp, C.Hairline, shape)) {
@@ -87,7 +89,7 @@ fun StravaHero(go: (Screen) -> Unit) {
                     when {
                         act != null -> act.name.ifBlank { "Activity" } + " · " + act.startDate
                         connected -> "Nothing recent"
-                        else -> "Strava not connected"
+                        else -> "Health Connect not connected"
                     }, color = C.Text2, fontSize = 13.sp, maxLines = 1,
                 )
             }
@@ -123,7 +125,7 @@ fun StravaHero(go: (Screen) -> Unit) {
                     drawPath(path, Color.White, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                 }
             } else {
-                Text(if (connected) "No route yet" else "Connect Strava to see your route", color = C.Text3, fontSize = 13.sp)
+                Text(if (connected) "No route yet" else "Connect Health Connect to see your route", color = C.Text3, fontSize = 13.sp)
             }
         }
         val a = act
@@ -133,7 +135,7 @@ fun StravaHero(go: (Screen) -> Unit) {
             HeroStat(if (a != null) Fmt.clock(a.movingS) else "—", "time")
             HeroStat(if (a != null && a.avgHr > 0) "${a.avgHr.toInt()}" else "—", "bpm")
         }
-        Text("Powered by Strava", color = C.Text3, fontSize = 10.sp, modifier = Modifier.padding(start = 16.dp, bottom = 12.dp))
+        Text("Source: Health Connect", color = C.Text3, fontSize = 10.sp, modifier = Modifier.padding(start = 16.dp, bottom = 12.dp))
     }
 }
 
@@ -153,46 +155,46 @@ fun ConnectionsScreen(back: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     val tick = AppState.dataTick
-    val status = NetState.strava
+    val status = NetState.health
     val nstatus = NetState.notion
-    var sId by remember { mutableStateOf(Strava.clientId(ctx)) }
-    var sSec by remember { mutableStateOf("") }
     var nTok by remember { mutableStateOf("") }
     var nDb by remember { mutableStateOf("") }
     var watch by remember { mutableStateOf(store.watchMe) }
-    val connected = remember(tick, status) { Strava.connected(ctx) }
+    val connected = remember(tick, status) { HealthSync.connected(ctx) }
+    val permLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) {
+        Thread { HealthSync.refreshPermissions(ctx); AppState.dataTick++; HealthSync.sync(ctx) }.start()
+    }
+    val routeLauncher = rememberLauncherForActivityResult(ExerciseRouteRequestContract()) { r -> HealthSync.saveRoute(ctx, r) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { Thread { HealthSync.refreshPermissions(ctx); AppState.dataTick++ }.start() }
     val nOn = remember(tick, nstatus) { Notion.configured(ctx) }
-    val hasKeys = remember(tick, status) { Strava.hasKeys(ctx) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         ScreenHeader("Connections", back, "Your data, only where you send it.")
 
         FocusCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(R.drawable.ic_directions_run, active = connected)
+                IconTile(R.drawable.ic_monitor_heart, active = connected)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text("Strava", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                    Text(if (connected) "Connected" + Strava.athlete(ctx).let { if (it.isNotBlank()) " as $it" else "" } else "Runs and rides, verified", color = C.Text2, fontSize = 13.sp)
+                    Text("Health Connect", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (connected) "Connected · runs, rides, workouts" else "Reads runs and routes saved by Strava", color = C.Text2, fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(12.dp))
-            if (connected) {
-                GhostButton("Sync now", icon = R.drawable.ic_sync) { Strava.syncAsync(ctx) }
-                Spacer(Modifier.height(8.dp))
-                GhostButton("Disconnect") { Strava.disconnect(ctx); AppState.dataTick++ }
-            } else {
-                Text("Create a free app at strava.com/settings/api. Set the callback domain to focus.app, then paste the keys.", color = C.Text2, fontSize = 13.sp, lineHeight = 18.sp)
+            if (!HealthSync.sdkAvailable(ctx)) {
+                Text("Install or update Health Connect from Play Store, then come back.", color = C.Text2, fontSize = 13.sp, lineHeight = 18.sp)
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(sId, { sId = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Client ID") }, colors = fieldColors(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(sSec, { sSec = it }, Modifier.fillMaxWidth(), singleLine = true,
-                    label = { Text(if (hasKeys) "Client Secret (saved)" else "Client Secret") }, colors = fieldColors(),
-                    visualTransformation = PasswordVisualTransformation())
-                Spacer(Modifier.height(12.dp))
-                PrimaryButton("Save and connect", enabled = sId.isNotBlank() && (sSec.isNotBlank() || hasKeys)) {
-                    Strava.saveKeys(ctx, sId, if (sSec.isNotBlank()) sSec else Secure.get(ctx, "strava_secret"))
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Strava.authUri(ctx)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                GhostButton("Open Play Store") {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            } else if (!connected) {
+                Text("In Strava turn on Health Connect sync (Settings → Health Connect). Then allow Focus to read exercise, route, distance and heart rate. Data never leaves your phone.", color = C.Text2, fontSize = 13.sp, lineHeight = 18.sp)
+                Spacer(Modifier.height(10.dp))
+                PrimaryButton("Allow access") { permLauncher.launch(HealthSync.PERMISSIONS) }
+            } else {
+                GhostButton("Sync now", icon = R.drawable.ic_sync) { HealthSync.syncAsync(ctx) }
+                if (store.str("hc_route_pending").isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    GhostButton("Allow route for latest run") { routeLauncher.launch(store.str("hc_route_pending")) }
                 }
             }
             if (status.isNotBlank()) Text(status, color = C.Text2, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
@@ -228,17 +230,6 @@ fun ConnectionsScreen(back: () -> Unit) {
                 }
             }
             if (nstatus.isNotBlank()) Text(nstatus, color = C.Text2, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
-        }
-
-        Spacer(Modifier.height(12.dp))
-        FocusCard(Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(R.drawable.ic_monitor_heart)
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text("Health Connect", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Not in this build. Heart rate and sleep come later.", color = C.Text2, fontSize = 13.sp)
-                }
-            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -286,7 +277,6 @@ fun SecurityScreen(back: () -> Unit) {
     var auto by remember { mutableIntStateOf(when (store.autoLockSeconds) { 0 -> 0; 30 -> 1; 300 -> 2; else -> 3 }) }
     val tick = AppState.dataTick
     val can = remember { canLockDevice(ctx) }
-    val sOn = remember(tick) { Strava.connected(ctx) }
     val nOn = remember(tick) { Notion.configured(ctx) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -307,7 +297,6 @@ fun SecurityScreen(back: () -> Unit) {
         Text("Connected tokens", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Text("Encrypted with a key that never leaves the phone’s secure hardware.", color = C.Text2, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
-        TokenRow("Strava", sOn) { Strava.disconnect(ctx); AppState.dataTick++ }
         TokenRow("Notion", nOn) { Notion.disconnect(ctx); AppState.dataTick++ }
         Spacer(Modifier.height(100.dp))
     }
