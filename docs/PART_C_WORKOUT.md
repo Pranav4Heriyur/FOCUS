@@ -2,6 +2,9 @@
 
 Read `docs/COMMON_CONTEXT.md` first. Specs: `docs/FOCUS_APP_WORKOUT_SPEC.md` (sections 2 to end: sitemap W0 to W18, data model, logic; ignore its colour palette), `docs/EFFECTIVE_LOAD_MODEL.md` + reference implementation `docs/effective_load.py` (**the numbers in section 8 of the model doc are the ground truth for your unit tests**), `docs/ALL_SCREEN_PROMPTS_MONO.md` "PART C" (C0 to C18 mockups), `docs/DESIGN_SYSTEM_MONO.md`.
 
+## FOLLOW THE DESIGN ZIP EXACTLY (do this before writing any UI)
+Pranav has the design handoff zip for this part (the mockup images plus its handoff md describing the whole design system). He will unzip it into `docs/mockups/partC/` in the repo (or attach it in chat). **Read the handoff md and open every image with the Read tool, then build each screen to match it**: layout, spacing, type sizes, corner radii, icons, copy, states and the black-and-white scheme. If a mockup disagrees with a text spec or an old colour palette, the mockup wins. A screen with no mockup follows the same visual language and the prompt in `docs/ALL_SCREEN_PROMPTS_MONO.md`. If the zip contents are not available to you, stop and ask Pranav for them; do not invent the design.
+
 ## Goal
 A fast gym logger at least as good as Strong (plans, active workout, sets, rest timer, PRs, plate calculator, history, edit past workouts) with a better load model that works for any exercise or activity, including ones the app has never seen.
 

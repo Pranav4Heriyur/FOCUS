@@ -2,6 +2,9 @@
 
 Read `docs/COMMON_CONTEXT.md` first. Specs: `docs/STUDY_SECTION.md` (logic, data model; ignore its colour hexes), `docs/ALL_SCREEN_PROMPTS_MONO.md` "PART B" (B0 to B6, the mono mockups), `docs/DESIGN_SYSTEM_MONO.md`.
 
+## FOLLOW THE DESIGN ZIP EXACTLY (do this before writing any UI)
+Pranav has the design handoff zip for this part (the mockup images plus its handoff md describing the whole design system). He will unzip it into `docs/mockups/partB/` in the repo (or attach it in chat). **Read the handoff md and open every image with the Read tool, then build each screen to match it**: layout, spacing, type sizes, corner radii, icons, copy, states and the black-and-white scheme. If a mockup disagrees with a text spec or an old colour palette, the mockup wins. A screen with no mockup follows the same visual language and the prompt in `docs/ALL_SCREEN_PROMPTS_MONO.md`. If the zip contents are not available to you, stop and ask Pranav for them; do not invent the design.
+
 ## Goal
 Replace the Study tab placeholder with a fast, light NEET tracker: Physics, Chemistry, Biology (always this order), question logging, accuracy and NEET marks, chapters, mock tests, a mistake notebook with spaced revision, and study stats. Logging must take under 10 seconds.
 
