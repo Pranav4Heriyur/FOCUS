@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -176,7 +177,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
                                 Screen.Workout -> PlaceholderScreen("Workout", "Workout screen is not built yet.")
                                 Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
-                                Screen.Profile -> com.pranav.focus.ui.ProfileScreen2 { go(it) }
+                                Screen.Profile -> com.pranav.focus.ui.ProfileScreenRef { go(it) }
                                 Screen.Apps -> AppsScreen { back() }
                                 Screen.Callers -> CallersScreen { back() }
                                 Screen.Setup -> SetupScreen({ back() }, reqNotif, reqRole)
