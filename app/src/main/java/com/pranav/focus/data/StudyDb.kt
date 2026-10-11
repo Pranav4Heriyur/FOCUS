@@ -1,0 +1,105 @@
+package com.pranav.focus.data
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import java.time.LocalDate
+
+/** Study data lives in its own SQLite file (framework API, no extra dependency). */
+class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "study.db", null, 1) {
+    private val prefs = ctx.applicationContext.getSharedPreferences("study_prefs", Context.MODE_PRIVATE)
+
+    override fun onCreate(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE chapter(id INTEGER PRIMARY KEY, subject INT, name TEXT, unit_order INT)")
+        db.execSQL("CREATE TABLE question_log(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INT, subject INT, chapter_id INT, source INT, correct INT, wrong INT, skipped INT, minutes INT, verified INT)")
+        db.execSQL("CREATE TABLE mock_test(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, name TEXT, p_c INT,p_w INT,p_s INT, c_c INT,c_w INT,c_s INT, b_c INT,b_w INT,b_s INT, target INT)")
+        db.execSQL("CREATE TABLE mistake(id INTEGER PRIMARY KEY AUTOINCREMENT, subject INT, chapter_id INT, ref TEXT, type INT, note TEXT, due TEXT, done_count INT)")
+        var i = 0
+        StudySeed.all().forEach { (s, n) ->
+            db.insert("chapter", null, ContentValues().apply { put("id", ++i); put("subject", s.ordinal); put("name", n); put("unit_order", i) })
+        }
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, o: Int, n: Int) {}
+
+    // ---- prefs ----------------------------------------------------------------
+    var neetDate: LocalDate
+        get() = runCatching { LocalDate.parse(prefs.getString("neet", null)) }.getOrDefault(LocalDate.of(2027, 5, 2))
+        set(v) = prefs.edit().putString("neet", v.toString()).apply()
+
+    var targetScore: Int
+        get() = prefs.getInt("target", 600)
+        set(v) = prefs.edit().putInt("target", v).apply()
+
+    // ---- chapters --------------------------------------------------------------
+    fun chapters(): List<Chapter> {
+        val out = ArrayList<Chapter>()
+        readableDatabase.rawQuery("SELECT id, subject, name FROM chapter ORDER BY unit_order", null).use {
+            while (it.moveToNext()) out.add(Chapter(it.getInt(0), Subject.values()[it.getInt(1)], it.getString(2)))
+        }
+        return out
+    }
+
+    // ---- logs ------------------------------------------------------------------
+    fun insertLog(l: QLog): Long = writableDatabase.insert("question_log", null, ContentValues().apply {
+        put("ts", l.ts); put("subject", l.subject.ordinal); put("chapter_id", l.chapterId); put("source", l.source.ordinal)
+        put("correct", l.correct); put("wrong", l.wrong); put("skipped", l.skipped); put("minutes", l.minutes); put("verified", if (l.verified) 1 else 0)
+    })
+
+    fun logs(sinceMs: Long = 0): List<QLog> {
+        val out = ArrayList<QLog>()
+        readableDatabase.rawQuery(
+            "SELECT id, ts, subject, chapter_id, source, correct, wrong, skipped, minutes, verified FROM question_log WHERE ts >= ? ORDER BY ts",
+            arrayOf(sinceMs.toString()),
+        ).use {
+            while (it.moveToNext()) out.add(QLog(it.getLong(0), it.getLong(1), Subject.values()[it.getInt(2)], it.getInt(3),
+                Source.values()[it.getInt(4)], it.getInt(5), it.getInt(6), it.getInt(7), it.getInt(8), it.getInt(9) == 1))
+        }
+        return out
+    }
+
+    // ---- mocks -----------------------------------------------------------------
+    fun insertMock(m: Mock): Long = writableDatabase.insert("mock_test", null, ContentValues().apply {
+        put("date", m.date); put("name", m.name)
+        put("p_c", m.c[0]); put("p_w", m.w[0]); put("p_s", m.s[0])
+        put("c_c", m.c[1]); put("c_w", m.w[1]); put("c_s", m.s[1])
+        put("b_c", m.c[2]); put("b_w", m.w[2]); put("b_s", m.s[2]); put("target", m.target)
+    })
+
+    fun mocks(): List<Mock> {
+        val out = ArrayList<Mock>()
+        readableDatabase.rawQuery("SELECT id, date, name, p_c,p_w,p_s,c_c,c_w,c_s,b_c,b_w,b_s,target FROM mock_test ORDER BY date DESC, id DESC", null).use {
+            while (it.moveToNext()) out.add(Mock(it.getLong(0), it.getString(1), it.getString(2),
+                listOf(it.getInt(3), it.getInt(6), it.getInt(9)), listOf(it.getInt(4), it.getInt(7), it.getInt(10)),
+                listOf(it.getInt(5), it.getInt(8), it.getInt(11)), it.getInt(12)))
+        }
+        return out
+    }
+
+    // ---- mistakes --------------------------------------------------------------
+    fun insertMistake(m: Mistake): Long = writableDatabase.insert("mistake", null, ContentValues().apply {
+        put("subject", m.subject.ordinal); put("chapter_id", m.chapterId); put("ref", m.ref); put("type", m.type.ordinal)
+        put("note", m.note); put("due", m.due); put("done_count", m.doneCount)
+    })
+
+    fun mistakes(): List<Mistake> {
+        val out = ArrayList<Mistake>()
+        readableDatabase.rawQuery("SELECT id, subject, chapter_id, ref, type, note, due, done_count FROM mistake ORDER BY due, id", null).use {
+            while (it.moveToNext()) out.add(Mistake(it.getLong(0), Subject.values()[it.getInt(1)], it.getInt(2), it.getString(3),
+                MistakeType.values()[it.getInt(4)], it.getString(5), it.getString(6), it.getInt(7)))
+        }
+        return out
+    }
+
+    fun markRevised(m: Mistake) {
+        writableDatabase.update("mistake", ContentValues().apply {
+            put("done_count", m.doneCount + 1); put("due", StudyLogic.nextDue(LocalDate.now(), m.doneCount).toString())
+        }, "id = ?", arrayOf(m.id.toString()))
+    }
+
+    companion object {
+        @Volatile private var inst: StudyDb? = null
+        fun get(ctx: Context): StudyDb = inst ?: synchronized(this) { inst ?: StudyDb(ctx).also { inst = it } }
+    }
+}
