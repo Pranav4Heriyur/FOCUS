@@ -67,6 +67,8 @@ private fun agendaIcon(k: String) = when (k) {
     "Chemistry" -> R.drawable.ic_science
     "Biology" -> R.drawable.ic_eco
     "Workout" -> R.drawable.ic_fitness_center
+    "Run" -> R.drawable.p1_run_sprinter
+    "Mirror" -> R.drawable.ic_visibility_off
     else -> R.drawable.ic_shield
 }
 

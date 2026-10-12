@@ -65,7 +65,7 @@ data class Activity(
 }
 
 data class Entry(val id: String, val dateMs: Long, val title: String, val note: String)
-data class AgendaItem(val id: String, val title: String, val sub: String, val icon: String)
+data class AgendaItem(val id: String, val title: String, val sub: String, val icon: String, val time: String = "")
 data class Caller(val name: String, val number: String, val enabled: Boolean = true)
 
 object Codec {
@@ -93,8 +93,8 @@ object Codec {
     fun entries(l: List<Entry>): String = JSONArray(l.map { JSONObject().put("id", it.id).put("date", it.dateMs).put("title", it.title).put("note", it.note) }).toString()
     fun entries(s: String?): List<Entry> = arr(s) { Entry(it.getString("id"), it.getLong("date"), it.getString("title"), it.optString("note")) }
 
-    fun agenda(l: List<AgendaItem>): String = JSONArray(l.map { JSONObject().put("id", it.id).put("title", it.title).put("sub", it.sub).put("icon", it.icon) }).toString()
-    fun agenda(s: String?): List<AgendaItem> = arr(s) { AgendaItem(it.getString("id"), it.getString("title"), it.optString("sub"), it.optString("icon")) }
+    fun agenda(l: List<AgendaItem>): String = JSONArray(l.map { JSONObject().put("id", it.id).put("title", it.title).put("sub", it.sub).put("icon", it.icon).put("t", it.time) }).toString()
+    fun agenda(s: String?): List<AgendaItem> = arr(s) { AgendaItem(it.getString("id"), it.getString("title"), it.optString("sub"), it.optString("icon"), it.optString("t")) }
 
     fun callers(l: List<Caller>): String = JSONArray(l.map { JSONObject().put("name", it.name).put("number", it.number).put("on", it.enabled) }).toString()
     fun callers(s: String?): List<Caller> = arr(s) { Caller(it.getString("name"), it.getString("number"), it.optBoolean("on", true)) }

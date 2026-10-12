@@ -300,11 +300,11 @@ class Store private constructor(ctx: Context) {
 
     companion object {
         val DEFAULT_AGENDA = listOf(
-            AgendaItem("phy", "Study Physics", "Solve 50 questions", "Physics"),
-            AgendaItem("chem", "Study Chemistry", "Revise full chapter notes", "Chemistry"),
-            AgendaItem("bio", "Study Biology", "Complete NCERT reading", "Biology"),
-            AgendaItem("work", "Workout", "At least 30 minutes", "Workout"),
-            AgendaItem("social", "Stay off social media", "No Instagram / YouTube", "Other"),
+            AgendaItem("run", "Run", "", "Run", "6:00 AM"),
+            AgendaItem("phy", "Focus: Physics", "", "Physics", "9:00 AM"),
+            AgendaItem("gym", "Gym: Push Day", "", "Workout", "1:00 PM"),
+            AgendaItem("chem", "Focus: Chemistry", "", "Chemistry", "4:00 PM"),
+            AgendaItem("mirror", "Accountability Mirror", "", "Mirror", "9:00 PM"),
         )
 
         @Volatile private var inst: Store? = null

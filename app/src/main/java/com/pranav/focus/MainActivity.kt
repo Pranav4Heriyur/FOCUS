@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Home -> HomeScreen { go(it) }
                                 Screen.Focus -> FocusStartScreen { go(it) }
                                 Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
-                                Screen.Workout -> PlaceholderScreen("Workout", "Workout screen is not built yet.")
+                                Screen.Workout -> PlaceholderScreen("Workout", "Workout logger and Effective Load model arrive in Part C.")
                                 Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
                                 Screen.Profile -> com.pranav.focus.ui.ProfileScreenRef { go(it) }
                                 Screen.Apps -> AppsScreen { back() }

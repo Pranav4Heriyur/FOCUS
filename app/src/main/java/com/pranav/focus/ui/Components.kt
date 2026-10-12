@@ -56,14 +56,14 @@ fun appLabel(ctx: android.content.Context, pkg: String): String = runCatching {
 }.getOrDefault(pkg)
 
 @Composable
-fun AppIcon(pkg: String, size: Dp = 44.dp) {
+fun AppIcon(pkg: String, size: Dp = 44.dp, mono: Boolean = false) {
     val ctx = LocalContext.current
     val bmp = remember(pkg) {
         iconCache[pkg] ?: runCatching { ctx.packageManager.getApplicationIcon(pkg).toBitmap(96, 96).asImageBitmap() }
             .getOrNull()?.also { iconCache[pkg] = it }
     }
     Box(Modifier.size(size).clip(RoundedCornerShape(size / 4)).background(C.Sheet)) {
-        if (bmp != null) Image(bmp, null, Modifier.fillMaxSize())
+        if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), colorFilter = if (mono) GrayFilter else null)
     }
 }
 
