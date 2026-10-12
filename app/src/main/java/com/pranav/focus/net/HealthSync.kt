@@ -8,6 +8,9 @@ import androidx.health.connect.client.records.ExerciseRoute
 import androidx.health.connect.client.records.ExerciseRouteResult
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.ElevationGainedRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -30,7 +33,10 @@ object HealthSync {
     const val P_ROUTES = "android.permission.health.READ_EXERCISE_ROUTES"
     const val P_DISTANCE = "android.permission.health.READ_DISTANCE"
     const val P_HR = "android.permission.health.READ_HEART_RATE"
-    val PERMISSIONS = setOf(P_EXERCISE, P_ROUTES, P_DISTANCE, P_HR)
+    const val P_KCAL = "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
+    const val P_ELEV = "android.permission.health.READ_ELEVATION_GAINED"
+    const val P_SLEEP = "android.permission.health.READ_SLEEP"
+    val PERMISSIONS = setOf(P_EXERCISE, P_ROUTES, P_DISTANCE, P_HR, P_KCAL, P_ELEV, P_SLEEP)
 
     fun sdkAvailable(ctx: Context) = HealthConnectClient.getSdkStatus(ctx) == HealthConnectClient.SDK_AVAILABLE
     fun needsInstall(ctx: Context) = HealthConnectClient.getSdkStatus(ctx) == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
@@ -76,11 +82,14 @@ object HealthSync {
                 val range = TimeRangeFilter.between(r.startTime, r.endTime)
                 var dist = 0.0
                 var hr = 0.0
-                runCatching {
-                    val agg = runBlocking { client.aggregate(AggregateRequest(setOf(DistanceRecord.DISTANCE_TOTAL, HeartRateRecord.BPM_AVG), range)) }
-                    dist = agg[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
-                    hr = (agg[HeartRateRecord.BPM_AVG] ?: 0L).toDouble()
-                }
+                var elev = 0.0
+                var kcal = 0
+                // each metric separately so one missing permission doesn't blank the others
+                runCatching { dist = runBlocking { client.aggregate(AggregateRequest(setOf(DistanceRecord.DISTANCE_TOTAL), range)) }[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0 }
+                runCatching { hr = (runBlocking { client.aggregate(AggregateRequest(setOf(HeartRateRecord.BPM_AVG), range)) }[HeartRateRecord.BPM_AVG] ?: 0L).toDouble() }
+                runCatching { elev = runBlocking { client.aggregate(AggregateRequest(setOf(ElevationGainedRecord.ELEVATION_GAINED_TOTAL), range)) }[ElevationGainedRecord.ELEVATION_GAINED_TOTAL]?.inMeters ?: 0.0 }
+                runCatching { kcal = (runBlocking { client.aggregate(AggregateRequest(setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL), range)) }[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0).toInt() }
+                Store.get(ctx).putInt("kcal_" + r.metadata.id.hashCode(), kcal)
                 var poly = ""
                 when (val rr = r.exerciseRouteResult) {
                     is ExerciseRouteResult.Data -> poly = Polyline.encode(rr.exerciseRoute.route.map { it.latitude to it.longitude })
@@ -91,8 +100,13 @@ object HealthSync {
                     r.metadata.id.hashCode().toLong(), type,
                     r.title?.takeIf { it.isNotBlank() } ?: when (type) { "Run" -> "Run"; "Ride" -> "Ride"; else -> "Workout" },
                     r.startTime.toEpochMilli(), r.startTime.atZone(zone).toLocalDate().toString(),
-                    dist, Duration.between(r.startTime, r.endTime).seconds.toInt(), hr, 0.0, poly,
+                    dist, Duration.between(r.startTime, r.endTime).seconds.toInt(), hr, elev, poly,
                 ))
+            }
+            // last night's sleep (minutes), for the Balance radar
+            runCatching {
+                val m = runBlocking { client.aggregate(AggregateRequest(setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL), TimeRangeFilter.between(end.minus(Duration.ofHours(30)), end))) }[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes() ?: 0L
+                Store.get(ctx).putInt("sleep_min", m.toInt())
             }
             Store.get(ctx).activities = out.sortedByDescending { it.startMs }
             Earning.evaluate(ctx)

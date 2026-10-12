@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -69,6 +70,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
     val tick = AppState.dataTick + AppState.tick
     var watchMe by remember { mutableStateOf(store.watchMe) }
     var mode by remember { mutableIntStateOf(0) }
+    var avatarVer by remember { mutableIntStateOf(0) }
     var doneIds by remember(tick) { mutableStateOf(store.reviewDone()) }
 
     val act = remember(mode, tick) { store.activities.firstOrNull { if (mode == 0) it.isRun else it.isRide } }
@@ -90,13 +92,13 @@ fun HomeScreen(go: (Screen) -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Reveal(0) { Header(greeting, watchMe) { watchMe = !watchMe; store.watchMe = watchMe } }
-        Reveal(1) { HeroCard(act, mode, connected, store.imperial, { mode = it }) { go(Screen.Connections) } }
+        Reveal(0) { Header(greeting, watchMe, avatarVer, { avatarVer++ }) { watchMe = !watchMe; store.watchMe = watchMe } }
+        Reveal(1) { HeroCard(store, act, mode, connected, store.imperial, { mode = it }) { go(Screen.Connections) } }
         Reveal(2) {
             BalanceCard(
                 listOf(
                     (focusMin / 120f), (day.actions.size + (store.int("workouts_$today"))).coerceAtMost(1).toFloat(),
-                    (runKm / 5.0).toFloat(), (studyLogs.sumOf { it.attempted } / 60f), 0f, (store.streak / 30f),
+                    (runKm / 5.0).toFloat(), (studyLogs.sumOf { it.attempted } / 60f), (store.int("sleep_min") / 480f), (store.streak / 30f),
                 ).map { it.coerceIn(0f, 1f) }
             )
         }
@@ -126,11 +128,25 @@ fun HomeScreen(go: (Screen) -> Unit) {
 
 // ---------------------------------------------------------------------------------------
 @Composable
-private fun Header(greeting: String, watchMe: Boolean, onWatch: () -> Unit) {
+private fun Header(greeting: String, watchMe: Boolean, ver: Int, onPhoto: () -> Unit, onWatch: () -> Unit) {
+    val ctx = LocalContext.current
+    val file = java.io.File(ctx.filesDir, "avatar.jpg")
+    val bmp = remember(ver) { if (file.exists()) runCatching { android.graphics.BitmapFactory.decodeFile(file.path)?.asImageBitmap() }.getOrNull() else null }
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) runCatching {
+            val src = android.graphics.BitmapFactory.decodeStream(ctx.contentResolver.openInputStream(uri)) ?: return@runCatching
+            val side = minOf(src.width, src.height)
+            val sq = android.graphics.Bitmap.createBitmap(src, (src.width - side) / 2, (src.height - side) / 2, side, side)
+            val out = android.graphics.Bitmap.createScaledBitmap(sq, 320, 320, true)
+            file.outputStream().use { out.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+            onPhoto()
+        }
+    }
     Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.Image(
-            painterResource(R.drawable.avatar_default), null,
-            Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).border(1.dp, C.Hairline, RoundedCornerShape(17.dp)),
+            bmp ?: androidx.compose.ui.res.imageResource(R.drawable.avatar_default), null,
+            Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).border(1.dp, C.Hairline, RoundedCornerShape(17.dp))
+                .clickable { pick.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             contentScale = ContentScale.Crop,
         )
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
@@ -150,7 +166,7 @@ private fun Header(greeting: String, watchMe: Boolean, onWatch: () -> Unit) {
 }
 
 @Composable
-private fun HeroCard(act: com.pranav.focus.data.Activity?, mode: Int, connected: Boolean, imperial: Boolean, onMode: (Int) -> Unit, onConnect: () -> Unit) {
+private fun HeroCard(store: Store, act: com.pranav.focus.data.Activity?, mode: Int, connected: Boolean, imperial: Boolean, onMode: (Int) -> Unit, onConnect: () -> Unit) {
     Column(Modifier.fillMaxWidth().glass(28.dp)) {
         Box(Modifier.fillMaxWidth().height(183.dp).background(Color(0xFF070708))) {
             MapRoute(act, connected, Modifier.fillMaxSize().clickable(enabled = !connected) { onConnect() })
@@ -186,7 +202,7 @@ private fun HeroCard(act: com.pranav.focus.data.Activity?, mode: Int, connected:
                 Box(Modifier.width(1.dp).height(30.dp).background(C.Hairline))
                 SubStat(R.drawable.p1_elevation_mountain, if (act != null && act.elevM > 0) "${act.elevM.toInt()} m" else "—", "elevation gain", Modifier.weight(1f))
                 Box(Modifier.width(1.dp).height(30.dp).background(C.Hairline))
-                SubStat(R.drawable.p1_calories_flame, "—", "calories", Modifier.weight(1f))
+                SubStat(R.drawable.p1_calories_flame, store.int("kcal_" + (act?.id ?: 0)).let { if (act != null && it > 0) "$it kcal" else "—" }, "calories", Modifier.weight(1f))
             }
         }
     }
