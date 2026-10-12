@@ -188,6 +188,9 @@ class MainActivity : ComponentActivity() {
                                 Screen.Rank -> com.pranav.focus.ui.RankScreen { back() }
                                 Screen.Connections -> com.pranav.focus.ui.ConnectionsScreen { back() }
                                 Screen.Security -> com.pranav.focus.ui.SecurityScreen { back() }
+                                Screen.Plan, Screen.PlanSubjects, Screen.PlanAdd, Screen.PlanEdit, Screen.PlanReorder,
+                                Screen.PlanDetail, Screen.PlanCalendar, Screen.PlanFocus, Screen.PlanSummary, Screen.PlanSettings ->
+                                    com.pranav.focus.ui.PlanHost(screen, { go(it) }, { back() })
                                 Screen.TimeBank -> TimeBankScreen({ back() }, { go(Screen.Rules) }, { go(Screen.Focus) })
                             }
                         }

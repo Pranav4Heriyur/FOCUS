@@ -183,7 +183,7 @@ private fun HeroCard(store: Store, act: com.pranav.focus.data.Activity?, mode: I
                 }
                 RunRide(mode, onMode)
             }
-            Text("via Health Connect", color = C.Text3, fontSize = 8.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 10.dp))
+            Text(act?.let { store.str("src_" + it.id) }?.takeIf { it.isNotBlank() }?.let { "via $it" } ?: "via Health Connect", color = C.Text3, fontSize = 8.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 10.dp))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp, bottom = 12.dp)) {
             Row(Modifier.fillMaxWidth().height(61.dp), verticalAlignment = Alignment.CenterVertically) {

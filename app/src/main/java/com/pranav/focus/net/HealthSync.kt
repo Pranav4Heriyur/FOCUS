@@ -76,6 +76,7 @@ object HealthSync {
             }
             val zone = ZoneId.systemDefault()
             val out = ArrayList<Activity>()
+            val srcs = HashMap<Long, MutableSet<String>>()
             for (r in sessions) {
                 val type = typeOf(r.exerciseType)
                 if (type == "Other") continue
@@ -96,6 +97,7 @@ object HealthSync {
                     is ExerciseRouteResult.ConsentRequired -> Store.get(ctx).putStr("hc_route_pending", r.metadata.id)
                     else -> {}
                 }
+                srcs.getOrPut(r.metadata.id.hashCode().toLong()) { sortedSetOf() }.add(srcName(r.metadata.dataOrigin.packageName))
                 out.add(Activity(
                     r.metadata.id.hashCode().toLong(), type,
                     r.title?.takeIf { it.isNotBlank() } ?: when (type) { "Run" -> "Run"; "Ride" -> "Ride"; else -> "Workout" },
@@ -108,12 +110,44 @@ object HealthSync {
                 val m = runBlocking { client.aggregate(AggregateRequest(setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL), TimeRangeFilter.between(end.minus(Duration.ofHours(30)), end))) }[SleepSessionRecord.SLEEP_DURATION_TOTAL]?.toMinutes() ?: 0L
                 Store.get(ctx).putInt("sleep_min", m.toInt())
             }
-            Store.get(ctx).activities = out.sortedByDescending { it.startMs }
+            // Club the watch (Samsung Health) and Strava: the same workout appears twice in Health Connect.
+            val st = Store.get(ctx)
+            val merged = ArrayList<Activity>()
+            for (a in out.sortedBy { it.startMs }) {
+                val i = merged.indexOfFirst { m -> m.type == a.type && overlaps(m, a) }
+                if (i < 0) { merged.add(a); continue }
+                val m = merged[i]
+                val base = if (a.polyline.length > m.polyline.length) a else m
+                st.putInt("kcal_" + base.id, maxOf(st.int("kcal_" + a.id), st.int("kcal_" + m.id)))
+                srcs.getOrPut(base.id) { sortedSetOf() }.addAll(srcs[a.id].orEmpty() + srcs[m.id].orEmpty())
+                merged[i] = base.copy(
+                    distM = maxOf(a.distM, m.distM), movingS = maxOf(a.movingS, m.movingS),
+                    avgHr = maxOf(a.avgHr, m.avgHr), elevM = maxOf(a.elevM, m.elevM),
+                    polyline = base.polyline.ifEmpty { a.polyline.ifEmpty { m.polyline } },
+                    name = if (m.name in setOf("Run", "Ride", "Workout")) a.name else m.name,
+                )
+            }
+            merged.forEach { st.putStr("src_" + it.id, srcs[it.id].orEmpty().joinToString(" + ")) }
+            val outFinal = merged
+            Store.get(ctx).activities = outFinal.sortedByDescending { it.startMs }
             Earning.evaluate(ctx)
             Store.get(ctx).putLong("hc_last_sync", System.currentTimeMillis())
-            NetState.health = "Synced ${out.size} activities."
+            NetState.health = "Synced ${outFinal.size} activities."
             AppState.dataTick++
         }.onFailure { NetState.health = "Couldn’t read Health Connect: ${it.javaClass.simpleName}" }
+    }
+
+    private fun srcName(pkg: String) = when {
+        "shealth" in pkg || "samsung" in pkg -> "Samsung Health"
+        "strava" in pkg -> "Strava"
+        else -> pkg.substringAfterLast('.')
+    }
+
+    private fun overlaps(a: Activity, b: Activity): Boolean {
+        val aE = a.startMs + a.movingS * 1000L; val bE = b.startMs + b.movingS * 1000L
+        val inter = minOf(aE, bE) - maxOf(a.startMs, b.startMs)
+        val shorter = minOf(aE - a.startMs, bE - b.startMs).coerceAtLeast(1)
+        return inter > shorter / 2
     }
 
     fun syncAsync(ctx: Context) { Thread { sync(ctx) }.start() }
