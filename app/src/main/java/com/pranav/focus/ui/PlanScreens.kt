@@ -521,6 +521,10 @@ private fun PlanDetail(go: (Screen) -> Unit, back: () -> Unit) {
                 }
             }
         }
+        run {
+            val fm = store.int("tfocus_${t.id}"); val q = store.int("tq_${t.id}")
+            if (fm > 0 || q > 0) Text("Linked: ${fm} min focused · $q questions logged", color = C.Text2, fontSize = 13.sp)
+        }
         PrimaryButton("Start Focus") { go(Screen.PlanFocus) }
         GhostButton(if (t.done) "Mark as not done" else "Mark as Done") { PlanState.upsert(ctx, t.copy(done = !t.done)); back() }
         GhostButton("Delete Task") { confirm = true }
@@ -629,7 +633,7 @@ private fun PlanFocus(go: (Screen) -> Unit, back: () -> Unit) {
         // the existing session controller needs a subject it knows; Personal maps to Other
         PrimaryButton(if (AppState.coreReady) "Start Focus" else "Finish setup to begin") {
             if (!AppState.coreReady) go(Screen.Setup)
-            else SessionController.start(ctx, t.dur, t.title, if (t.subject == "Personal") "Other" else t.subject)
+            else SessionController.start(ctx, t.dur, t.title, if (t.subject == "Personal") "Other" else t.subject, t.id)
         }
     }
 }

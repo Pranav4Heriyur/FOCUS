@@ -67,7 +67,7 @@ import java.time.temporal.ChronoUnit
 
 sealed class SR {
     object Hub : SR()
-    data class Log(val subject: Subject? = null, val chapterId: Int? = null) : SR()
+    data class Log(val subject: Subject? = null, val chapterId: Int? = null, val taskId: String = "") : SR()
     data class Sub(val subject: Subject) : SR()
     data class Chap(val id: Int) : SR()
     object MockLog : SR()
@@ -89,7 +89,18 @@ class SData(val chapters: List<Chapter>, val logs: List<QLog>, val mocks: List<M
 @Composable
 fun StudyRoot(go: (Screen) -> Unit) {
     val ctx = LocalContext.current
-    val stack = remember { mutableStateListOf<SR>(SR.Hub) }
+    val stack = remember {
+        mutableStateListOf<SR>(SR.Hub).also { st ->
+            // Arrived from the "session complete" screen: open Quick Log pre-filled from the planner task that was just focused.
+            val store = Store.get(ctx)
+            if (store.int("study_prefill") == 1) {
+                store.putInt("study_prefill", 0)
+                val tid = store.str("last_session_task")
+                val subj = Subject.byLabel(PlanState.get(tid)?.subject ?: store.str("last_session_subject"))
+                if (subj != null) st.add(SR.Log(subj, null, tid))
+            }
+        }
+    }
     var ver by remember { mutableIntStateOf(0) }
     val tick = AppState.dataTick + ver
     val data = remember(tick) {
@@ -302,6 +313,7 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
         }
         val key = "study_${store.today()}"
         store.putInt(key, store.int(key) + t.attempted)
+        if (r.taskId.isNotEmpty()) store.putInt("tq_${r.taskId}", store.int("tq_${r.taskId}") + t.attempted)
         val xpKey = "studyxp_${store.today()}"
         val gain = StudyLogic.xpFor(t.attempted, c, store.int(xpKey))
         store.putInt(xpKey, store.int(xpKey) + gain); store.xp = store.xp + gain

@@ -37,7 +37,7 @@ import kotlin.math.sin
 
 /** A5: session complete. */
 @Composable
-fun CompleteScreen(s: SessionSummary, onDone: () -> Unit, onLog: () -> Unit) {
+fun CompleteScreen(s: SessionSummary, onDone: () -> Unit, onLog: () -> Unit, taskTitle: String? = null, onMarkDone: (() -> Unit)? = null) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,6 +105,10 @@ fun CompleteScreen(s: SessionSummary, onDone: () -> Unit, onLog: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         GhostButton("Log questions", icon = R.drawable.ic_menu_book) { onLog() }
         Spacer(Modifier.height(12.dp))
+        if (taskTitle != null && onMarkDone != null) {
+            GhostButton("Mark “$taskTitle” done") { onMarkDone() }
+            Spacer(Modifier.height(12.dp))
+        }
         PrimaryButton("Done") { onDone() }
         Spacer(Modifier.height(16.dp))
     }

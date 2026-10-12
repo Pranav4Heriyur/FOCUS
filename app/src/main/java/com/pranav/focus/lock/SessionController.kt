@@ -55,8 +55,9 @@ object AppState {
 }
 
 object SessionController {
-    fun start(ctx: Context, minutes: Int, name: String, subject: String) {
+    fun start(ctx: Context, minutes: Int, name: String, subject: String, taskId: String = "") {
         val s = Store.get(ctx)
+        s.putStr("s_task", taskId)
         s.lastMinutes = minutes
         s.lastName = name
         s.lastSubject = subject
@@ -72,6 +73,9 @@ object SessionController {
         val minutes = s.sessionMinutes
         val subject = s.sessionSubject
         s.endSession()
+        val taskId = s.str("s_task")
+        s.putStr("last_session_task", taskId)
+        if (taskId.isNotEmpty()) s.putInt("tfocus_$taskId", s.int("tfocus_$taskId") + minutes)
         s.putLong("last_session_end", System.currentTimeMillis()); s.putStr("last_session_subject", subject)
         val earned = s.recordCompleted(minutes)
         Earning.evaluate(ctx)

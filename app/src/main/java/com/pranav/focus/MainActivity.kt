@@ -157,7 +157,13 @@ class MainActivity : ComponentActivity() {
                 summary != null -> CompleteScreen(
                     summary,
                     onDone = { AppState.summary = null; go(Screen.Home) },
-                    onLog = { AppState.summary = null; go(Screen.Study) },
+                    onLog = { AppState.summary = null; store.putInt("study_prefill", 1); go(Screen.Study) },
+                    taskTitle = store.str("last_session_task").let { id -> com.pranav.focus.ui.PlanState.get(id)?.takeIf { !it.done }?.title },
+                    onMarkDone = {
+                        val id = store.str("last_session_task")
+                        com.pranav.focus.ui.PlanState.get(id)?.let { com.pranav.focus.ui.PlanState.upsert(ctx, it.copy(done = true)) }
+                        AppState.summary = null; go(Screen.Home)
+                    },
                 )
                 AppState.locked && store.biometricLock -> com.pranav.focus.ui.LockScreen { promptUnlock() }
                 !setupDone -> SetupScreen(null, reqNotif, reqRole, onContinue = { store.setupDone = true; setupDone = true })
