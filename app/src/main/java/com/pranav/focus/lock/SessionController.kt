@@ -72,6 +72,7 @@ object SessionController {
         val minutes = s.sessionMinutes
         val subject = s.sessionSubject
         s.endSession()
+        s.putLong("last_session_end", System.currentTimeMillis()); s.putStr("last_session_subject", subject)
         val earned = s.recordCompleted(minutes)
         Earning.evaluate(ctx)
         if (com.pranav.focus.net.Notion.configured(ctx)) com.pranav.focus.net.Notion.pushAsync(ctx, "Focus · $minutes min · $subject", "Completed a locked $minutes-minute focus session ($subject). Streak: ${s.streak} days. XP: ${s.xp}.", report = false)

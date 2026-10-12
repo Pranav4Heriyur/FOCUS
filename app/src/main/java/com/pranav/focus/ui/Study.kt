@@ -99,7 +99,7 @@ fun StudyRoot(go: (Screen) -> Unit) {
     fun push(r: SR) { stack.add(r) }
     fun pop() { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
     BackHandler(enabled = stack.size > 1) { pop() }
-    val bump = { ver++; AppState.dataTick++ }
+    val bump: () -> Unit = { ver++; AppState.dataTick++ }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 24.dp)) {
         when (val r = stack.last()) {
             SR.Hub -> StudyHub(data, ::push)
