@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                             when (screen) {
                                 Screen.Home -> HomeScreen { go(it) }
                                 Screen.Focus -> FocusStartScreen { go(it) }
-                                Screen.Study -> PlaceholderScreen("Study", "NEET question tracker: Physics, Chemistry, Biology, mocks and the mistake notebook.")
+                                Screen.Study -> com.pranav.focus.ui.StudyRoot { go(it) }
                                 Screen.Workout -> PlaceholderScreen("Workout", "Workout logger and Effective Load model arrive in Part C.")
                                 Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
                                 Screen.Profile -> com.pranav.focus.ui.ProfileScreenRef { go(it) }
