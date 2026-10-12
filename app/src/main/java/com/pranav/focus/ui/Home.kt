@@ -144,7 +144,7 @@ private fun Header(greeting: String, watchMe: Boolean, ver: Int, onPhoto: () -> 
     }
     Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.Image(
-            bmp ?: androidx.compose.ui.res.imageResource(R.drawable.avatar_default), null,
+            bmp ?: remember { android.graphics.BitmapFactory.decodeResource(ctx.resources, R.drawable.avatar_default).asImageBitmap() }, null,
             Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).border(1.dp, C.Hairline, RoundedCornerShape(17.dp))
                 .clickable { pick.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             contentScale = ContentScale.Crop,
