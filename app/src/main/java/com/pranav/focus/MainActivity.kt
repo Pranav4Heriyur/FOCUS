@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity() {
                     taskTitle = store.str("last_session_task").let { id -> com.pranav.focus.ui.PlanState.get(id)?.takeIf { !it.done }?.title },
                     onMarkDone = {
                         val id = store.str("last_session_task")
-                        com.pranav.focus.ui.PlanState.get(id)?.let { com.pranav.focus.ui.PlanState.upsert(ctx, it.copy(done = true)) }
+                        com.pranav.focus.ui.PlanState.get(id)?.let { com.pranav.focus.ui.PlanState.upsert(this@MainActivity, it.copy(done = true)) }
                         AppState.summary = null; go(Screen.Home)
                     },
                 )

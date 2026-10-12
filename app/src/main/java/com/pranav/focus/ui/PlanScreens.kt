@@ -522,7 +522,7 @@ private fun PlanDetail(go: (Screen) -> Unit, back: () -> Unit) {
             }
         }
         run {
-            val fm = store.int("tfocus_${t.id}"); val q = store.int("tq_${t.id}")
+            val st = Store.get(ctx); val fm = st.int("tfocus_${t.id}"); val q = st.int("tq_${t.id}")
             if (fm > 0 || q > 0) Text("Linked: ${fm} min focused · $q questions logged", color = C.Text2, fontSize = 13.sp)
         }
         PrimaryButton("Start Focus") { go(Screen.PlanFocus) }
