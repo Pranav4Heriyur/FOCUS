@@ -85,3 +85,5 @@ fun TabBar(current: Screen, onSelect: (Screen) -> Unit) {
 
 /** Extra bottom space screens reserve above the tab bar (bar is laid out in a Column, so little is needed). */
 val NAV_CLEARANCE = 12.dp
+
+val NAV_CLEARANCE = 12.dp
