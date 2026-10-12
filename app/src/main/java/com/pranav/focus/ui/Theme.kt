@@ -108,15 +108,18 @@ fun Caps(text: String, modifier: Modifier = Modifier, color: Color = C.Text2) {
 }
 
 @Composable
-fun FocusCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(24.dp)
+fun FocusCard(
+    modifier: Modifier = Modifier, onClick: (() -> Unit)? = null,
+    radius: Dp = 24.dp, padding: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(radius)
     Column(
         modifier
             .clip(shape)
             .background(C.Card)
             .border(BorderStroke(1.dp, C.Hairline), shape)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(16.dp),
+            .padding(padding),
         content = content,
     )
 }
@@ -199,3 +202,14 @@ fun fieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = C.Text2, unfocusedLabelColor = C.Text3,
     focusedPlaceholderColor = C.Text3, unfocusedPlaceholderColor = C.Text3,
 )
+
+/** Aliases used by the Plan screens. */
+@Composable
+fun FocusToggle(checked: Boolean, onChange: (Boolean) -> Unit) = FocusSwitch(checked, onChange)
+
+@Composable
+fun ProgBar(frac: Float, modifier: Modifier = Modifier, height: Dp = 6.dp) {
+    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(C.Track)) {
+        Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).fillMaxHeight().background(C.White))
+    }
+}
