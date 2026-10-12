@@ -213,14 +213,3 @@ fun ProgBar(frac: Float, modifier: Modifier = Modifier, height: Dp = 6.dp) {
         Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).fillMaxHeight().background(C.White))
     }
 }
-
-/** Aliases used by the Plan screens. */
-@Composable
-fun FocusToggle(checked: Boolean, onChange: (Boolean) -> Unit) = FocusSwitch(checked, onChange)
-
-@Composable
-fun ProgBar(frac: Float, modifier: Modifier = Modifier, height: Dp = 6.dp) {
-    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(C.Track)) {
-        Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).fillMaxHeight().background(C.White))
-    }
-}
