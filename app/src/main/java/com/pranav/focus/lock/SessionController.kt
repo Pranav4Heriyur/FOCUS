@@ -67,7 +67,7 @@ object SessionController {
     }
 
     /** Timer ran out: reward and unlock. */
-    fun complete(ctx: Context) {
+    @Synchronized fun complete(ctx: Context) {
         val s = Store.get(ctx)
         if (!s.sessionActive) return
         val minutes = s.sessionMinutes
@@ -86,7 +86,7 @@ object SessionController {
     }
 
     /** Quit through the friction flow: penalty applies. */
-    fun quit(ctx: Context) {
+    @Synchronized fun quit(ctx: Context) {
         val s = Store.get(ctx)
         if (!s.sessionActive) return
         s.endSession()
