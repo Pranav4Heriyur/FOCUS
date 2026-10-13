@@ -48,7 +48,7 @@ class TimeBankRecoveryTest {
     @Test fun refundNeverExceedsReservation() {
         val l = open(30); l.reserveTopUp("a", 1, "d1", "yt", 10)
         assertEquals(0, l.settlePast("d2", 2) { _, _ -> 999 }); assertEquals(20, l.balance())
-        val m = open(30); m.reserveTopUp("b", 1, "d1", "yt", 10); assertEquals(10, m.settlePast("d2", 2) { _, _ -> -5 }); assertEquals(30, m.balance())
+        disk = ""; val m = open(30); m.reserveTopUp("b", 1, "d1", "yt", 10); assertEquals(10, m.settlePast("d2", 2) { _, _ -> -5 }); assertEquals(30, m.balance())
     }
     @Test fun measuredUseSubtractsBaseAndEarnedGrantsAndStudy() {
         assertEquals(15, Allowance.bankUsedFromMeasured(80 * 60_000L, 10 * 60_000L, 50, 5))   // 70 ent - 50 base - 5 earned
