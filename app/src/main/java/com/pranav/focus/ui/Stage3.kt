@@ -188,40 +188,6 @@ fun canLockDevice(ctx: android.content.Context): Boolean {
         BiometricManager.BIOMETRIC_SUCCESS
 }
 
-@Composable
-fun SecurityScreen(back: () -> Unit) {
-    val ctx = LocalContext.current
-    val store = remember { Store.get(ctx) }
-    var bio by remember { mutableStateOf(store.biometricLock) }
-    var exit by remember { mutableStateOf(store.lockOnExit) }
-    var recents by remember { mutableStateOf(store.hideInRecents) }
-    var auto by remember { mutableIntStateOf(when (store.autoLockSeconds) { 0 -> 0; 30 -> 1; 300 -> 2; else -> 3 }) }
-    val tick = AppState.dataTick
-    val can = remember { canLockDevice(ctx) }
-    val nOn = remember(tick) { Notion.configured(ctx) }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        ScreenHeader("Security", back, "Everything stays on this phone.")
-        SwitchCard(R.drawable.ic_fingerprint, "Biometric lock", if (can) "Fingerprint or screen lock to open Focus" else "Set a screen lock in Android settings first", bio, can || bio) {
-            bio = it; store.biometricLock = it
-        }
-        SwitchCard(R.drawable.ic_lock, "Lock on exit", "Ask again every time you leave the app", exit, bio) { exit = it; store.lockOnExit = it }
-        SwitchCard(R.drawable.ic_visibility_off, "Hide in recents", "Blank preview and no screenshots", recents, true) { recents = it; store.hideInRecents = it }
-        FocusCard(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-            Text("Auto-lock after", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            SegFull(listOf("Now", "30 s", "5 min", "Never"), auto) {
-                auto = it; store.autoLockSeconds = when (it) { 0 -> 0; 1 -> 30; 2 -> 300; else -> -1 }
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Text("Connected tokens", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        Text("Encrypted with a key that never leaves the phone’s secure hardware.", color = C.Text2, fontSize = 13.sp)
-        Spacer(Modifier.height(8.dp))
-        TokenRow("Notion", nOn) { Notion.disconnect(ctx); AppState.dataTick++ }
-        Spacer(Modifier.height(100.dp))
-    }
-}
 
 @Composable
 private fun SwitchCard(icon: Int, title: String, sub: String, on: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
