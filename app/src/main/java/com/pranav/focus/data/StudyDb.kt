@@ -54,6 +54,11 @@ class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
         get() = prefs.getString("neet", null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         set(v) { prefs.edit().apply { if (v == null) remove("neet") else putString("neet", v.toString()) }.apply() }
 
+    /** Day the user first configured the exam date (drives the elapsed/remaining ring). Null for dates saved before this existed. */
+    var neetStart: LocalDate?
+        get() = prefs.getString("neet_start", null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        set(v) { prefs.edit().apply { if (v == null) remove("neet_start") else putString("neet_start", v.toString()) }.apply() }
+
     var targetScore: Int
         get() = prefs.getInt("target", 600)
         set(v) = prefs.edit().putInt("target", v).apply()

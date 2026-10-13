@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.getStringExtra("open") == "mirror") { intent.removeExtra("open"); AppState.openMirror = true }
         Earning.evaluate(this)
         if (com.pranav.focus.net.HealthSync.connected(this)) com.pranav.focus.net.HealthSync.syncAsync(this)
+        com.pranav.focus.ui.NeetCountdown.refresh(this)
         AppState.dataTick++
         AppState.refresh(this)
     }

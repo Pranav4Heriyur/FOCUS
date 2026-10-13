@@ -95,6 +95,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
     ) {
         Reveal(0) { Header(greeting, watchMe, avatarVer, { avatarVer++ }) { watchMe = !watchMe; store.watchMe = watchMe } }
         Reveal(1) { HeroCard(store, act, mode, connected, store.imperial, { mode = it }) { go(Screen.Connections) } }
+        Reveal(2) { NeetCountdownCompact { go(Screen.Study) } }
         Reveal(2) {
             BalanceCard(
                 listOf(

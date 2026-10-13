@@ -137,34 +137,19 @@ fun StudyRoot(go: (Screen) -> Unit) {
 private fun StudyHub(d: SData, push: (SR) -> Unit) {
     val today = d.between(AppClock.today(), AppClock.today().plusDays(1))
     val tt = today.tally()
-    var exam by remember { mutableStateOf(d.db.neetDate) }
+    val cd = rememberNeetCountdown()
     var editExam by remember { mutableStateOf(false) }
-    var examText by remember { mutableStateOf("") }
-    var examErr by remember { mutableStateOf(false) }
-    val days = exam?.let { StudyLogic.daysTo(it, AppClock.today()) }
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("Study", color = C.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        if (days == null) Pill("Set exam date", onClick = { examText = ""; examErr = false; editExam = true })
-        else Pill(if (days < 0) "NEET date passed  ›" else "NEET: $days days  ›", onClick = { push(SR.Stats) })
+        when (cd) {
+            is com.pranav.focus.data.Countdown.Unset -> Pill("Set exam date", onClick = { editExam = true })
+            is com.pranav.focus.data.Countdown.Passed -> Pill("NEET date passed  ›", onClick = { push(SR.Stats) })
+            else -> Pill("NEET: ${com.pranav.focus.data.CountdownLogic.daysLeft(cd)} days  ›", onClick = { push(SR.Stats) })
+        }
     }
-    if (editExam) androidx.compose.material3.AlertDialog(
-        onDismissRequest = { editExam = false },
-        containerColor = C.Sheet,
-        title = { Text("Exam date", color = C.White) },
-        text = {
-            Column {
-                androidx.compose.material3.OutlinedTextField(examText, { examText = it; examErr = false }, singleLine = true, placeholder = { Text("YYYY-MM-DD") })
-                if (examErr) Text("Use the format YYYY-MM-DD.", color = C.Text2, fontSize = 12.sp)
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton({
-                val v = runCatching { java.time.LocalDate.parse(examText.trim()) }.getOrNull()
-                if (v == null) examErr = true else { d.db.neetDate = v; exam = v; editExam = false }
-            }) { Text("Save", color = C.White) }
-        },
-        dismissButton = { if (exam != null) androidx.compose.material3.TextButton({ d.db.neetDate = null; exam = null; editExam = false }) { Text("Clear", color = C.Text2) } },
-    )
+    if (editExam) ExamDateDialog { editExam = false }
+    NeetCountdownCard(onEdit = { editExam = true })
+    Spacer(Modifier.height(12.dp))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Subject.values().forEachIndexed { i, s ->
             Reveal(i) {
