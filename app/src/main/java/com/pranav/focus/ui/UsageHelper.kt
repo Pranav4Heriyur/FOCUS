@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Process
 import com.pranav.focus.lock.Allowed
-import java.util.Calendar
 
 data class AppUse(val pkg: String, val label: String, val ms: Long)
 
@@ -18,19 +17,16 @@ object UsageHelper {
             AppOpsManager.MODE_ALLOWED
     }
 
-    fun midnight(): Long = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
+    fun midnight(): Long = com.pranav.focus.data.PlanDates.dayBoundsMs(com.pranav.focus.data.AppClock.today(), com.pranav.focus.data.AppClock.zone()).first
 
     private var cacheAt = 0L
+    private var cacheDay = 0L
     private var cache: Map<String, Long> = emptyMap()
 
-    /** Exact foreground time per package since midnight from resume/pause events, cached ~3 s. */
-    fun usedTodayMs(ctx: Context, force: Boolean = false): Map<String, Long> {
-        val now = System.currentTimeMillis()
-        if (!force && now - cacheAt < 3_000) return cache
+    /** Foreground ms per package inside [from, to), from resume/pause events. */
+    fun usedBetweenMs(ctx: Context, from: Long, to: Long): Map<String, Long> {
         val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyMap()
-        val ev = usm.queryEvents(midnight(), now) ?: return emptyMap()
+        val ev = usm.queryEvents(from, to) ?: return emptyMap()
         val e = UsageEvents.Event()
         val open = HashMap<String, Long>()
         val total = HashMap<String, Long>()
@@ -44,10 +40,24 @@ object UsageHelper {
                     open.remove(p)?.let { total[p] = (total[p] ?: 0L) + (e.timeStamp - it).coerceAtLeast(0) }
             }
         }
-        lastFg?.let { p -> open[p]?.let { total[p] = (total[p] ?: 0L) + (now - it).coerceAtLeast(0) } }
-        cache = total
-        cacheAt = now
+        lastFg?.let { p -> open[p]?.let { total[p] = (total[p] ?: 0L) + (to - it).coerceAtLeast(0) } }
         return total
+    }
+
+    /** True only when usage access is granted AND Android still holds events for that window (it keeps only a few days). */
+    fun windowVerifiable(ctx: Context, from: Long, to: Long): Boolean {
+        if (!hasAccess(ctx)) return false
+        val ev = ctx.getSystemService(UsageStatsManager::class.java)?.queryEvents(from, to) ?: return false
+        return ev.hasNextEvent()
+    }
+
+    /** Exact foreground time per package since local midnight, cached ~3 s. */
+    fun usedTodayMs(ctx: Context, force: Boolean = false): Map<String, Long> {
+        val now = System.currentTimeMillis()
+        if (!force && now - cacheAt < 3_000 && cacheDay == midnight()) return cache
+        cache = usedBetweenMs(ctx, midnight(), now)
+        cacheAt = now; cacheDay = midnight()
+        return cache
     }
 
     fun usedMin(ctx: Context, pkg: String): Double = (usedTodayMs(ctx)[pkg] ?: 0L) / 60_000.0

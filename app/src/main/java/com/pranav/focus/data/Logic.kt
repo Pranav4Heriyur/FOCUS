@@ -39,15 +39,7 @@ object Rewards {
 data class Rank(val name: String, val minXp: Int, val tagline: String)
 
 object Ranks {
-    val ALL = listOf(
-        Rank("Recruit", 0, "Building the habit."),
-        Rank("Grinder", 250, "Showing up consistently."),
-        Rank("Uncommon", 500, "You do what most people don’t."),
-        Rank("Relentless", 1000, "Higher standards. No excuses."),
-        Rank("Disciplined", 2000, "Results over feelings."),
-        Rank("Elite", 4000, "A different breed."),
-        Rank("Legendary", 8000, "Inspires others."),
-    )
+    val ALL: List<Rank> get() = ProgressionPolicy.RANKS
 
     fun forXp(xp: Int): Rank = ALL.last { xp >= it.minXp }
     fun next(xp: Int): Rank? = ALL.firstOrNull { it.minXp > xp }

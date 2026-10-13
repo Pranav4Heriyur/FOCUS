@@ -34,8 +34,9 @@ object Earning {
         for (a in ACTIONS) {
             if (a.id in d.actions) continue
             if (progress(s, a.cond) >= a.target) {
-                d.actions.add(a.id); d.pool += a.minutes; d.earnedTotal += a.minutes
-                s.xp += Rewards.ACTION_XP; changed = true
+                d.actions.add(a.id); d.earnedTotal += a.minutes
+                s.ledger.earn("act:${s.today()}:${a.id}", System.currentTimeMillis(), s.today(), a.minutes, a.id)
+                s.awardXp("act:${s.today()}:${a.id}", "action", Rewards.ACTION_XP); changed = true
             }
         }
         for (r in s.unlockRules) {
@@ -44,22 +45,24 @@ object Earning {
                 d.granted.add(r.id)
                 d.alloc[r.pkg] = (d.alloc[r.pkg] ?: 0) + r.minutes
                 d.earnedTotal += r.minutes
-                s.xp += Rewards.RULE_XP; changed = true
+                s.awardXp("rule:${s.today()}:${r.id}", "rule", Rewards.RULE_XP); changed = true
             }
         }
         if (changed) s.saveDay(d)
         return changed
     }
 
-    /** Spend pool minutes to unlock an app. Returns minutes actually unlocked. */
-    fun unlockFromPool(ctx: Context, pkg: String, want: Int): Int {
+    /**
+     * Spend Time Bank minutes on a top-up. Call ONLY after the user confirmed the amount.
+     * [requestId] makes a retry/double-tap idempotent (same id never charges twice).
+     */
+    @Synchronized
+    fun unlockFromPool(ctx: Context, pkg: String, want: Int, requestId: String = java.util.UUID.randomUUID().toString()): Int {
         val s = Store.get(ctx)
-        val d = s.day()
-        val m = minOf(want, s.bankMinutes)
-        if (m <= 0) return 0
-        d.fromPool += m
-        d.alloc[pkg] = (d.alloc[pkg] ?: 0) + m
-        s.saveDay(d)
+        s.rollover()
+        val id = "topup:$requestId"
+        val m = s.ledger.reserveTopUp(id, System.currentTimeMillis(), s.today(), pkg, want)
+        // The ledger reservation IS the grant (Enforcer reads it back); nothing else is written, so no crash window.
         return m
     }
 }

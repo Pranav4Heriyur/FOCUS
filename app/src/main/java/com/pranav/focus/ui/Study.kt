@@ -69,7 +69,7 @@ import java.time.temporal.ChronoUnit
 
 sealed class SR {
     object Hub : SR()
-    data class Log(val subject: Subject? = null, val chapterId: Int? = null, val taskId: String = "") : SR()
+    data class Log(val subject: Subject? = null, val chapterId: Int? = null, val taskId: String = "", val sessionId: String = "") : SR()
     data class Sub(val subject: Subject) : SR()
     data class Chap(val id: Int) : SR()
     object MockLog : SR()
@@ -101,7 +101,7 @@ fun StudyRoot(go: (Screen) -> Unit) {
                 store.putInt("study_prefill", 0)
                 val tid = store.str("last_session_task")
                 val subj = Subject.byLabel(PlanState.get(tid)?.subject ?: store.str("last_session_subject"))
-                if (subj != null) st.add(SR.Log(subj, null, tid))
+                if (subj != null) st.add(SR.Log(subj, null, tid, store.str("last_session_id")))
             }
         }
     }
@@ -137,11 +137,34 @@ fun StudyRoot(go: (Screen) -> Unit) {
 private fun StudyHub(d: SData, push: (SR) -> Unit) {
     val today = d.between(AppClock.today(), AppClock.today().plusDays(1))
     val tt = today.tally()
-    val days = StudyLogic.daysTo(d.db.neetDate)
+    var exam by remember { mutableStateOf(d.db.neetDate) }
+    var editExam by remember { mutableStateOf(false) }
+    var examText by remember { mutableStateOf("") }
+    var examErr by remember { mutableStateOf(false) }
+    val days = exam?.let { StudyLogic.daysTo(it, AppClock.today()) }
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("Study", color = C.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Pill("NEET: $days days  ›", onClick = { push(SR.Stats) })
+        if (days == null) Pill("Set exam date", onClick = { examText = ""; examErr = false; editExam = true })
+        else Pill(if (days < 0) "NEET date passed  ›" else "NEET: $days days  ›", onClick = { push(SR.Stats) })
     }
+    if (editExam) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { editExam = false },
+        containerColor = C.Sheet,
+        title = { Text("Exam date", color = C.White) },
+        text = {
+            Column {
+                androidx.compose.material3.OutlinedTextField(examText, { examText = it; examErr = false }, singleLine = true, placeholder = { Text("YYYY-MM-DD") })
+                if (examErr) Text("Use the format YYYY-MM-DD.", color = C.Text2, fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton({
+                val v = runCatching { java.time.LocalDate.parse(examText.trim()) }.getOrNull()
+                if (v == null) examErr = true else { d.db.neetDate = v; exam = v; editExam = false }
+            }) { Text("Save", color = C.White) }
+        },
+        dismissButton = { if (exam != null) androidx.compose.material3.TextButton({ d.db.neetDate = null; exam = null; editExam = false }) { Text("Clear", color = C.Text2) } },
+    )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Subject.values().forEachIndexed { i, s ->
             Reveal(i) {
@@ -327,11 +350,11 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
         val inLast = now - store.long("last_session_end") < 60 * 60_000L
         val bookName = d.books.firstOrNull { it.id == bookId }?.name ?: "Practice"
         val notes = if (w > 0) types.map { m -> Mistake(0, sub, chap.id, "$bookName · ${chap.name}", m, "", AppClock.today().toString(), 0) } else emptyList()
-        d.db.insertLogWithMistakes(QLog(0, now, sub, chap.id, Source.values().getOrElse(bookId - 1) { Source.NCERT }, c, w, s, minutes, inLast, bookId), notes)
+        val logId = d.db.insertLogWithMistakes(QLog(0, now, sub, chap.id, Source.values().getOrElse(bookId - 1) { Source.NCERT }, c, w, s, minutes, inLast, bookId,
+            r.taskId.ifEmpty { null }, r.sessionId.ifEmpty { null }), notes)
         if (r.taskId.isNotEmpty()) store.putInt("tq_${r.taskId}", store.int("tq_${r.taskId}") + t.attempted)
-        val xpKey = "studyxp_${store.today()}"
-        val gain = StudyLogic.xpFor(t.attempted, c, store.int(xpKey))
-        store.putInt(xpKey, store.int(xpKey) + gain); store.xp = store.xp + gain
+        val gain = StudyLogic.xpFor(t.attempted, c, store.xpLedger.on(store.today(), "study"))
+        if (gain > 0) store.awardXp("study:${logId}", "study", gain)
         runCatching { Earning.evaluate(ctx) }
         bump(); back()
       }

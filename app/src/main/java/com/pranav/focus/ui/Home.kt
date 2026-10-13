@@ -112,7 +112,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
             val doneSet = todays.filter { it.done }.map { it.id }.toSet()
             AgendaCard(items, doneSet, onToggle = { id -> PlanState.get(id)?.let { PlanState.upsert(ctx, it.copy(done = !it.done)) } }, onAdd = { go(Screen.PlanAdd) })
         }
-        Reveal(5) { TimeBankCard(day.earnedTotal, day.fromPool) { go(Screen.TimeBank) } }
+        Reveal(5) { TimeBankCard(store.bankMinutes, store.ledger.earnedOn(store.today()), store.ledger.spentOn(store.today())) { go(Screen.TimeBank) } }
         Reveal(6) { StudyCard(studyLogs) { go(Screen.Study) } }
         Reveal(7) { RingsCard(focusMin, workoutMin, (screenMs / 60_000).toInt(), budgetMin) { go(Screen.Stats) } }
         Reveal(8) { StreakCard(store.streak, store.xp) { go(Screen.Rank) } }
@@ -431,8 +431,8 @@ private fun AgendaCard(items: List<com.pranav.focus.data.AgendaItem>, done: Set<
 
 // ---------------------------------------------------------------------------------------
 @Composable
-private fun TimeBankCard(earned: Int, spent: Int, onUnlock: () -> Unit) {
-    val frac = rememberSweep(if (earned == 0) 0f else ((earned - spent).coerceAtLeast(0) / earned.toFloat()), 500)
+private fun TimeBankCard(balance: Int, earned: Int, spent: Int, onUnlock: () -> Unit) {
+    val frac = rememberSweep(if (balance + spent == 0) 0f else balance / (balance + spent).toFloat(), 500)
     Column(Modifier.fillMaxWidth().glass(24.dp).padding(horizontal = 18.dp).padding(top = 14.dp, bottom = 14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Time Bank", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -443,17 +443,17 @@ private fun TimeBankCard(earned: Int, spent: Int, onUnlock: () -> Unit) {
             }
         }
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("$earned", style = glow(76f, 300).copy(lineHeight = 80.sp, letterSpacing = (-2).sp))
+            Text("$balance", style = glow(76f, 300).copy(lineHeight = 80.sp, letterSpacing = (-2).sp))
             Text("min", color = C.White, fontSize = 22.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp, bottom = 14.dp))
         }
-        Caps("Earned today", color = C.Text2)
+        Caps("Available now", color = C.Text2)
         Spacer(Modifier.height(8.dp))
         Box(Modifier.fillMaxWidth().height(10.dp).clip(CircleShape).background(C.Track.copy(alpha = 0.7f))) {
             Box(Modifier.fillMaxWidth(frac).fillMaxHeight().clip(CircleShape).background(C.White))
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("$earned min earned", color = C.Text2, fontSize = 11.sp)
-            Text("$spent min spent", color = C.Text2, fontSize = 11.sp)
+            Text("$earned min earned today", color = C.Text2, fontSize = 11.sp)
+            Text("$spent min top-ups", color = C.Text2, fontSize = 11.sp)
         }
     }
 }

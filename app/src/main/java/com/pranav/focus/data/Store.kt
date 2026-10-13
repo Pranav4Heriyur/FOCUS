@@ -139,13 +139,86 @@ class Store private constructor(ctx: Context) {
     }
 
     /** Minutes in the pool that can still be spent on unlocking apps today. */
-    val bankMinutes: Int
-        get() { val d = day(); return TimeBank.poolAvailable(d.pool, d.penalty, d.fromPool) }
+    val bankMinutes: Int get() { rollover(); return ledger.balance() }
+
+    // ---- persistent Time Bank ledger (never expires at midnight) -------------------
+    @Volatile private var ledgerRef: Ledger? = null
+    @Volatile private var xpRef: XpLedger? = null
+
+    val ledger: Ledger get() = ledgerRef ?: synchronized(this) { ledgerRef ?: openLedger().also { ledgerRef = it } }
+    val xpLedger: XpLedger get() = xpRef ?: synchronized(this) { xpRef ?: openXp().also { xpRef = it } }
+
+    /** v1 -> v2 migration: carry today's spendable pool over as one OPENING event; nothing is lost or doubled. */
+    private fun openLedger(): Ledger {
+        val persist = { l: List<LedgerEvent> -> sp.edit().putString("ledger_v2", Ledger.encode(l)).commit(); Unit }
+        if (sp.contains("ledger_v2")) return Ledger(Ledger.decode(str("ledger_v2")), persist)
+        val d = day(); val t = today()
+        val future = sp.all.keys.filter { it.startsWith("day_") && it.substring(4) > t }.sumOf { day(it.substring(4)).penalty }
+        val open = (TimeBank.poolAvailable(d.pool, d.penalty, d.fromPool) - future).coerceAtLeast(0)
+        val l = Ledger(emptyList(), persist)
+        if (open > 0) l.append(LedgerEvent("opening:v2", System.currentTimeMillis(), t, LedgerType.OPENING, open, ref = "migrated"))
+        else persist(emptyList())
+        return l
+    }
+
+    private fun openXp(): XpLedger {
+        val persist = { l: List<XpEvent> -> sp.edit().putString("xp_ledger_v1", XpLedger.encode(l)).commit(); Unit }
+        if (sp.contains("xp_ledger_v1")) return XpLedger(XpLedger.decode(str("xp_ledger_v1")), persist)
+        val legacy = int("xp"); val x = XpLedger(emptyList(), persist)
+        if (legacy > 0) x.record(XpEvent("opening:xp:v1", System.currentTimeMillis(), today(), "migrated", legacy)) else persist(emptyList())
+        return x
+    }
+
+    /** Apply penalties that came due today and refund unused top-ups from earlier days. Idempotent. */
+    @Synchronized fun rollover() {
+        val t = today(); val now = System.currentTimeMillis()
+        val pen = day(t).penalty
+        if (pen > 0) ledger.penalty("pen:$t", now, t, pen, "mirror")
+        ledger.settlePast(t, now) { d0, pkg -> verifiedBankUse(d0, pkg) }
+    }
+
+    /**
+     * Bank-funded minutes actually used on [date] for [pkg], or null when unverifiable.
+     * Takes the LARGER of (a) the in-app snapshot the Enforcer kept and (b) a fresh reconstruction from Android's usage
+     * events for that local day, so a stopped Enforcer can only lower a refund, never raise it. With no usage access, or no
+     * events retained for that day, we return null and the reservation stays unsettled rather than being over-credited.
+     */
+    private fun verifiedBankUse(date: String, pkg: String): Int? {
+        val (from, to) = PlanDates.dayBoundsMs(LocalDate.parse(date), AppClock.zone())
+        if (!com.pranav.focus.ui.UsageHelper.windowVerifiable(app, from, to)) return null
+        val rule = appRules.firstOrNull { it.pkg == pkg }
+        val base = if (rule == null) 0 else if (rule.locked) rule.baseMin else rule.limitMin   // unknown rule -> assume nothing was free
+        val measured = Allowance.bankUsedFromMeasured(
+            com.pranav.focus.ui.UsageHelper.usedBetweenMs(app, from, to)[pkg] ?: 0L, studyMs(pkg, date), base, day(date).alloc[pkg] ?: 0)
+        val snapshot = (int("bankuse_${date}_$pkg") - (day(date).alloc[pkg] ?: 0)).coerceAtLeast(0)
+        return maxOf(measured, snapshot)
+    }
+
+    /** Idempotent XP award. Returns false when [id] was already recorded. */
+    fun awardXp(id: String, source: String, delta: Int): Boolean = xpLedger.record(XpEvent(id, System.currentTimeMillis(), today(), source, delta))
+
+    // ---- YouTube study exemptions -----------------------------------------------------
+    var studyChannels: List<StudyChannel>
+        get() = str("study_channels").lines().mapNotNull { ln ->
+            val p = ln.split('\t')
+            if (p.size < 5) null else runCatching { StudyChannel(p[0], p[1], ExemptKind.valueOf(p[2]), p[3] == "1", p[4]) }.getOrNull()
+        }
+        set(v) = putStr("study_channels", v.joinToString("\n") { c ->
+            listOf(c.id, c.name, c.kind.name, if (c.enabled) "1" else "0", c.handle).joinToString("\t") { it.replace('\t', ' ').replace('\n', ' ') }
+        })
+    /** Detection is opt-in and off by default; it needs the Accessibility service to read the YouTube window. */
+    var studyDetect: Boolean get() = bool("study_detect"); set(v) = putBool("study_detect", v)
+    /** Weaker, spoofable name-only matching. Off by default and never reported as verified. */
+    var studyNameMatch: Boolean get() = bool("study_name_match"); set(v) = putBool("study_name_match", v)
+
+    @Synchronized fun addStudyMs(pkg: String, ms: Long, date: String = today()) {
+        if (ms > 0) sp.edit().putLong("sx_${date}_$pkg", long("sx_${date}_$pkg") + ms).commit()
+    }
+    fun studyMs(pkg: String, date: String = today()): Long = long("sx_${date}_$pkg")
 
     // ---- progress ------------------------------------------------------------
-    var xp: Int
-        get() = int("xp")
-        set(v) = putInt("xp", v)
+    /** Derived from the XP event ledger; award via [awardXp] so every grant is idempotent. */
+    val xp: Int get() = xpLedger.total()
 
     var totalFocusMinutes: Int
         get() = int("total_minutes")
@@ -169,26 +242,28 @@ class Store private constructor(ctx: Context) {
         get() {
             val days = focusDays()
             var d = AppClock.today()
-            if ((days[d.toString()] ?: 0) <= 0) d = d.minusDays(1)
+            if (!ProgressionPolicy.streakQualifies(days[d.toString()] ?: 0)) d = d.minusDays(1)
             var n = 0
-            while ((days[d.toString()] ?: 0) > 0) { n++; d = d.minusDays(1) }
+            while (ProgressionPolicy.streakQualifies(days[d.toString()] ?: 0)) { n++; d = d.minusDays(1) }
             return n
         }
 
+    /** Idempotent per session (keyed by its end stamp): replays after an interrupted completion add nothing. */
     @Synchronized fun recordCompleted(minutes: Int): Int {
+        val key = "sess_${long("s_end_wall")}"
+        if (sp.contains("done_$key")) return int("done_$key")
         val earned = TimeBank.earnedFromFocus(minutes)
-        xp += Rewards.xpForSession(minutes)
+        awardXp("focus:$key", "focus", Rewards.xpForSession(minutes))
+        ledger.earn("earn:$key", System.currentTimeMillis(), today(), earned, "focus")
         totalFocusMinutes += minutes
         addFocus(minutes)
-        val d = day()
-        d.pool += earned
-        d.earnedTotal += earned
-        saveDay(d)
+        val d = day(); d.earnedTotal += earned; saveDay(d)
+        sp.edit().putInt("done_$key", earned).commit()
         return earned
     }
 
-    fun recordQuit() {
-        xp = Rewards.xpAfterQuit(xp)
+    @Synchronized fun recordQuit() {
+        awardXp("quit:sess_${long("s_end_wall")}", "quit", -Rewards.QUIT_XP_PENALTY)
     }
 
     // ---- activities (Strava cache) -----------------------------------------------
@@ -297,7 +372,7 @@ class Store private constructor(ctx: Context) {
 
     // ---- wipe ------------------------------------------------------------------
     fun resetAll() {
-        sp.edit().clear().apply()
+        sp.edit().clear().commit(); ledgerRef = null; xpRef = null
     }
 
     companion object {

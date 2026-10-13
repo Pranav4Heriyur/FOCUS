@@ -84,7 +84,7 @@ private fun ProgressRing(frac: Float, size: Int = 48, icon: Int) {
 // A6 App Rules
 // --------------------------------------------------------------------------------------
 @Composable
-fun RulesScreen(back: () -> Unit, onNewRule: () -> Unit) {
+fun RulesScreen(back: () -> Unit, onNewRule: () -> Unit, onStudy: () -> Unit = {}) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     var tab by remember { mutableIntStateOf(0) }
@@ -111,7 +111,7 @@ fun RulesScreen(back: () -> Unit, onNewRule: () -> Unit) {
                             AppIcon(r.pkg)
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(appLabel(ctx, r.pkg), color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                                Text("${r.limitMin} min/day · used ${used}m", color = C.Text2, fontSize = 13.sp)
+                                Text("${r.limitMin} min/day cap · ${r.baseMin} free base · used ${used}m", color = C.Text2, fontSize = 13.sp)
                             }
                             Ico(R.drawable.ic_delete, 22.dp, C.Text3, Modifier.clickable { saveRules(rules.filter { it.pkg != r.pkg }) }.padding(4.dp))
                         }
@@ -121,6 +121,16 @@ fun RulesScreen(back: () -> Unit, onNewRule: () -> Unit) {
                             colors = SliderDefaults.colors(thumbColor = C.White, activeTrackColor = C.White, inactiveTrackColor = C.Track,
                                 activeTickColor = C.White, inactiveTickColor = C.Track),
                         )
+                        Text("Free daily base: ${r.baseMin} min (resets at local midnight)", color = C.Text2, fontSize = 12.sp)
+                        Slider(
+                            value = r.baseMin.toFloat(), valueRange = 0f..r.limitMin.toFloat().coerceAtLeast(1f), steps = 0,
+                            onValueChange = { v -> saveRules(rules.map { if (it.pkg == r.pkg) it.copy(baseMin = (v / 5).toInt() * 5) else it }) },
+                            colors = SliderDefaults.colors(thumbColor = C.White, activeTrackColor = C.White, inactiveTrackColor = C.Track),
+                        )
+                        if (r.pkg == com.pranav.focus.lock.FocusAccessibilityService.YT) {
+                            Text("Study Exemptions  ›", color = C.White, fontSize = 15.sp, fontWeight = FontWeight.Medium,
+                                modifier = Modifier.fillMaxWidth().clickable { onStudy() }.padding(vertical = 10.dp))
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Locked by default", color = C.White, fontSize = 15.sp)
@@ -335,8 +345,11 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
     val tick = AppState.dataTick + AppState.tick
     var bump by remember { mutableIntStateOf(0) }
     var help by remember { mutableStateOf(false) }
-    val day = remember(tick, bump) { store.day() }
     val bank = remember(tick, bump) { store.bankMinutes }
+    var topFor by remember { mutableStateOf<String?>(null) }
+    var topAmt by remember { mutableIntStateOf(0) }
+    var reqId by remember { mutableStateOf("") }
+    val day = remember(tick, bump) { store.day() }
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1000); now = LocalDateTime.now() } }
     val left = run {
@@ -360,24 +373,29 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
                 androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_stack), null, Modifier.size(width = 112.dp, height = 133.dp))
             }
             Spacer(Modifier.height(10.dp))
-            val tot = (day.earnedTotal + 0.0001f).coerceAtLeast(1f)
+            val earned = store.ledger.earnedOn(store.today())
+            val spent = store.ledger.spentOn(store.today())
+            val penalty = store.ledger.penaltyOn(store.today())
+            val tot = (earned + 0.0001f).coerceAtLeast(1f)
             Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(C.Track)) {
-                Box(Modifier.fillMaxWidth((1f - day.fromPool / tot).coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(C.White))
+                Box(Modifier.fillMaxWidth((1f - spent / tot).coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(C.White))
             }
             Spacer(Modifier.height(8.dp))
-            Text("Earned today ${day.earnedTotal}m · Spent ${day.fromPool}m" + if (day.penalty > 0) " · Penalty −${day.penalty}m" else "",
+            Text("Earned today ${earned}m · Top-ups ${spent}m" + if (penalty > 0) " · Penalty −${penalty}m" else "",
                 color = C.Text2, fontSize = 13.sp)
         }
         Spacer(Modifier.height(12.dp))
         FocusCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Resets at midnight", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Unused minutes expire", color = C.Text2, fontSize = 13.sp)
+                    Text("Free allowances reset at midnight", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Saved minutes carry over", color = C.Text2, fontSize = 13.sp)
                 }
                 Text(left, color = C.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
         }
+        Spacer(Modifier.height(12.dp))
+        UsageTotalsCard(tick + bump)
         Spacer(Modifier.height(20.dp))
         Text("Locked apps", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
@@ -391,10 +409,10 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
                         Text(appLabel(ctx, r.pkg), color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                         Text(if (rem > 0) "$rem min left today" else "Locked", color = C.Text2, fontSize = 13.sp)
                     }
-                    val can = bank > 0
-                    Text("Unlock 15", color = if (can) C.Black else C.Text3, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    val can = bank >= 10
+                    Text("Top up", color = if (can) C.Black else C.Text3, fontSize = 13.sp, fontWeight = FontWeight.Medium,
                         modifier = Modifier.clip(CircleShape).background(if (can) C.White else C.Track)
-                            .clickable(enabled = can) { Earning.unlockFromPool(ctx, r.pkg, 15); bump++; AppState.dataTick++ }
+                            .clickable(enabled = can) { topFor = r.pkg; topAmt = 0; reqId = java.util.UUID.randomUUID().toString() }
                             .padding(horizontal = 14.dp, vertical = 8.dp))
                 }
             }
@@ -433,6 +451,21 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
             modifier = Modifier.fillMaxWidth().clickable { help = true }.padding(12.dp))
         Spacer(Modifier.height(100.dp))
     }
+    topFor?.let { pkg ->
+        FocusSheet({ topFor = null }) {
+            Text("Top up ${appLabel(ctx, pkg)}", color = C.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Nothing is spent until you confirm. Unused minutes are refunded at midnight.", color = C.Text2, fontSize = 13.sp)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.pranav.focus.data.Allowance.topUpOptions(bank).forEach { m -> Pill("$m min", filled = topAmt == m) { topAmt = m } }
+            }
+            Spacer(Modifier.height(12.dp))
+            PrimaryButton(if (topAmt == 0) "Choose an amount" else "Spend $topAmt min ($bank → ${bank - topAmt})", enabled = topAmt > 0) {
+                Earning.unlockFromPool(ctx, pkg, topAmt, reqId); topFor = null; bump++; AppState.dataTick++
+            }
+            GhostButton("Cancel") { topFor = null }
+        }
+    }
     if (help) AlertDialog(
         onDismissRequest = { help = false },
         confirmButton = { TextButton({ help = false }) { Text("Got it", color = C.White) } },
@@ -440,7 +473,7 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
         title = { Text("How the Time Bank works", color = C.White) },
         text = {
             Text("Locked apps stay shut until you earn time. Verified effort (focus sessions, Strava runs, workouts, study) adds minutes. " +
-                "Spend them to unlock an app, up to its daily limit. Everything resets at midnight. Missed Accountability Mirror items cost 10 minutes tomorrow. Manual entries never earn time.",
+                "Each app can have a free daily base that resets at local midnight; saved minutes carry over. When the base runs out you may confirm a top-up. Study time on approved YouTube channels never costs base or bank minutes. Missed Accountability Mirror items cost 10 minutes tomorrow. Manual entries never earn time.",
                 color = C.Text2, fontSize = 14.sp)
         },
     )

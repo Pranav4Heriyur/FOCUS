@@ -72,12 +72,13 @@ object SessionController {
         if (!s.sessionActive) return
         val minutes = s.sessionMinutes
         val subject = s.sessionSubject
+        val earned = s.recordCompleted(minutes)
         s.endSession()
         val taskId = s.str("s_task")
         s.putStr("last_session_task", taskId)
+        s.putStr("last_session_id", "sess_${s.long("s_end_wall")}")
         if (taskId.isNotEmpty()) s.putInt("tfocus_$taskId", s.int("tfocus_$taskId") + minutes)
         s.putLong("last_session_end", System.currentTimeMillis()); s.putStr("last_session_subject", subject)
-        val earned = s.recordCompleted(minutes)
         Earning.evaluate(ctx)
         if (com.pranav.focus.net.Notion.configured(ctx)) com.pranav.focus.net.Notion.pushAsync(ctx, "Focus · $minutes min · $subject", "Completed a locked $minutes-minute focus session ($subject). Streak: ${s.streak} days. XP: ${s.xp}.", report = false)
         ctx.stopService(Intent(ctx, FocusService::class.java))
@@ -89,8 +90,8 @@ object SessionController {
     @Synchronized fun quit(ctx: Context) {
         val s = Store.get(ctx)
         if (!s.sessionActive) return
-        s.endSession()
         s.recordQuit()
+        s.endSession()
         ctx.stopService(Intent(ctx, FocusService::class.java))
         AppState.refresh(ctx)
     }
