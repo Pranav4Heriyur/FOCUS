@@ -151,24 +151,24 @@ fun SetupScreen(back: (() -> Unit)?, requestNotif: () -> Unit, requestRole: () -
             }
             Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(104.dp).glyphGlow(0.10f))
-                GlowRing(frac, Modifier.size(150.dp), stroke = 5.dp)
+                FgRing(frac, Modifier.size(150.dp), stroke = 5.dp)
                 Image(painterResource(R.drawable.focus_lock_hero_white), "Lock", Modifier.size(58.dp))
             }
         }
-        GlowText("Set up your lock", Modifier.align(Alignment.CenterHorizontally), fontSize = 34.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+        FgGlowText("Set up your lock", Modifier.align(Alignment.CenterHorizontally), fontSize = 34.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
         Text("5 permissions make the lock work", color = C.Text2, fontSize = 16.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 2.dp))
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("$granted of ${perms.size} granted", color = C.White, fontSize = 14.sp)
             Text("${(frac * 100).roundToInt()}%", color = C.Text2, fontSize = 14.sp)
         }
-        GlowBar(frac, Modifier.padding(top = 2.dp), thickness = 6.dp)
+        FgBar(frac, Modifier.padding(top = 2.dp), thickness = 6.dp)
         Spacer(Modifier.height(6.dp))
 
         perms.forEach { p -> PermissionRow(p); Spacer(Modifier.height(10.dp)) }
 
         Spacer(Modifier.height(6.dp))
-        GlassPrimaryButton("Continue") { (onContinue ?: back)?.invoke() }
+        FgPrimaryButton("Continue") { (onContinue ?: back)?.invoke() }
         Text("You can change these later in Settings", color = C.Text3, fontSize = 13.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp))
         // Samsung needs these two to keep the timer alive; the reference has no row for them, so they stay as a quiet link.
@@ -181,8 +181,8 @@ fun SetupScreen(back: (() -> Unit)?, requestNotif: () -> Unit, requestRole: () -
 
 @Composable
 private fun PermissionRow(p: PermRow) {
-    Row(Modifier.fillMaxWidth().glassSurface(22.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        GlassTile(52.dp) { Ico(p.icon, 28.dp) }
+    Row(Modifier.fillMaxWidth().fgSurface(22.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        FgTile(52.dp) { Ico(p.icon, 28.dp) }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(p.title, color = C.White, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
             Spacer(Modifier.height(2.dp))
@@ -236,14 +236,14 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
             Box(Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 GlassBack({ go(Screen.Home) }, Modifier.align(Alignment.CenterStart))
                 Column(Modifier.fillMaxWidth().padding(top = 44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    GlowText("Start Focus Session", fontSize = 28.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+                    FgGlowText("Start Focus Session", fontSize = 28.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
                     Text("Choose a time, set your focus, and lock in.", color = C.Text2, fontSize = 15.sp, textAlign = TextAlign.Center)
                 }
             }
             DurationWheel(minutes, stops) { minutes = it }
 
             Text("Session name", color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
-            Row(Modifier.fillMaxWidth().height(58.dp).glassSurface(20.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(58.dp).fgSurface(20.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Ico(R.drawable.focus_book_open_white, 24.dp)
                 Box(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                     if (name.isEmpty()) Text("e.g. Physics Practice", color = C.Text3, fontSize = 17.sp)
@@ -261,7 +261,7 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
                     val sel = s == subject
                     Column(
                         Modifier.weight(1f).height(76.dp)
-                            .then(if (sel) Modifier.whiteHalo(16.dp, 14.dp to 0.16f, 5.dp to 0.22f).clip(RoundedCornerShape(16.dp)).background(C.White) else Modifier.glassSurface(16.dp))
+                            .then(if (sel) Modifier.whiteHalo(16.dp, 14.dp to 0.16f, 5.dp to 0.22f).clip(RoundedCornerShape(16.dp)).background(C.White) else Modifier.fgSurface(16.dp))
                             .clickable(role = androidx.compose.ui.semantics.Role.Button) { subject = s },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
@@ -284,8 +284,8 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
             Spacer(Modifier.height(10.dp))
             SetupLinkRow(R.drawable.focus_phone_call_white, "Allowed callers", "${store.callers.size} contacts") { go(Screen.Callers) }
             Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth().glassSurface(20.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                GlassTile(48.dp) { Ico(R.drawable.focus_lock_small_white, 26.dp) }
+            Row(Modifier.fillMaxWidth().fgSurface(20.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FgTile(48.dp) { Ico(R.drawable.focus_lock_small_white, 26.dp) }
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text("Strict lock", color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                     Text("Blocks all other apps and websites", color = C.Text2, fontSize = 14.sp, maxLines = 2)
@@ -295,9 +295,9 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
         if (AppState.coreReady) {
-            GlassPrimaryButton("Begin Focus") { SessionController.start(ctx, minutes, name.trim(), subject) }
+            FgPrimaryButton("Begin Focus") { SessionController.start(ctx, minutes, name.trim(), subject) }
         } else {
-            GlassPrimaryButton("Finish setup to begin") { go(Screen.Setup) }
+            FgPrimaryButton("Finish setup to begin") { go(Screen.Setup) }
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -313,8 +313,8 @@ private fun subjectGlyph(s: String) = when (s) {
 
 @Composable
 private fun SetupLinkRow(icon: Int, title: String, sub: String, onEdit: () -> Unit) {
-    Row(Modifier.fillMaxWidth().glassSurface(20.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        GlassTile(48.dp) { Ico(icon, 26.dp) }
+    Row(Modifier.fillMaxWidth().fgSurface(20.dp).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        FgTile(48.dp) { Ico(icon, 26.dp) }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(title, color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             Text(sub, color = C.Text2, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -363,10 +363,10 @@ private fun DurationWheel(minutes: Int, stops: List<Int>, onChange: (Int) -> Uni
         }
         // Selected capsule
         Row(
-            Modifier.fillMaxWidth(0.62f).height(78.dp).glassSurface(39.dp),
+            Modifier.fillMaxWidth(0.62f).height(78.dp).fgSurface(39.dp),
             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
         ) {
-            GlowText("${stops[live]}", fontSize = 60.sp, fontWeight = FontWeight.Bold, tiers = 3)
+            FgGlowText("${stops[live]}", fontSize = 60.sp, fontWeight = FontWeight.Bold, tiers = 3)
             Text(" min", color = C.Text2, fontSize = 18.sp, modifier = Modifier.padding(start = 10.dp, top = 22.dp))
         }
     }
@@ -401,12 +401,12 @@ fun CallersScreen(back: () -> Unit) {
         Box(Modifier.fillMaxWidth().padding(top = 12.dp)) {
             GlassBack(back, Modifier.align(Alignment.CenterStart))
             Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                GlowText("Allowed Callers", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+                FgGlowText("Allowed Callers", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
                 Text("Only these numbers can reach you during focus.", color = C.Text2, fontSize = 15.sp, textAlign = TextAlign.Center)
             }
         }
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth().height(54.dp).glassSurface(20.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(54.dp).fgSurface(20.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Ico(R.drawable.focus_search_white, 22.dp, C.Text2)
             Box(Modifier.weight(1f).padding(start = 14.dp)) {
                 if (q.isEmpty()) Text("Search name or number", color = C.Text3, fontSize = 17.sp)
@@ -417,8 +417,8 @@ fun CallersScreen(back: () -> Unit) {
         if (list.isNotEmpty()) Text("← Swipe a row to delete", color = C.Text3, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp, bottom = 6.dp))
         shown.forEach { c ->
             SwipeRow(onDelete = { save(list.filter { it !== c }) }) {
-                Row(Modifier.fillMaxWidth().glassSurface(20.dp).padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    GlassTile(46.dp, 13.dp) { Text(c.name.trim().take(1).uppercase().ifEmpty { "?" }, color = C.White, fontSize = 20.sp, fontWeight = FontWeight.Medium) }
+                Row(Modifier.fillMaxWidth().fgSurface(20.dp).padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FgTile(46.dp, 13.dp) { Text(c.name.trim().take(1).uppercase().ifEmpty { "?" }, color = C.White, fontSize = 20.sp, fontWeight = FontWeight.Medium) }
                     Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                         Text(c.name, color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(c.number, color = C.Text2, fontSize = 14.sp, maxLines = 1)
@@ -434,7 +434,7 @@ fun CallersScreen(back: () -> Unit) {
             pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
         }
         Spacer(Modifier.height(10.dp))
-        GlassPrimaryButton("+ Add number") { sheet = true }
+        FgPrimaryButton("+ Add number") { sheet = true }
         Spacer(Modifier.height(14.dp))
         BlockedCallsCard(week)
         Spacer(Modifier.height(24.dp))
@@ -470,13 +470,13 @@ private fun SwipeRow(onDelete: () -> Unit, content: @Composable () -> Unit) {
 
 @Composable
 private fun BlockedCallsCard(week: List<Int>) {
-    Row(Modifier.fillMaxWidth().glassSurface(20.dp).padding(14.dp), verticalAlignment = Alignment.Top) {
+    Row(Modifier.fillMaxWidth().fgSurface(20.dp).padding(14.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassTile(40.dp, 12.dp) { Ico(R.drawable.focus_call_blocked_white, 22.dp) }
+                FgTile(40.dp, 12.dp) { Ico(R.drawable.focus_call_blocked_white, 22.dp) }
                 Text("BLOCKED CALLS THIS WEEK", color = C.Text2, fontSize = 10.sp, letterSpacing = 1.6.sp, modifier = Modifier.padding(start = 12.dp), maxLines = 2)
             }
-            GlowText("${week.sum()}", Modifier.padding(start = 6.dp, top = 6.dp), fontSize = 52.sp, tiers = 3)
+            FgGlowText("${week.sum()}", Modifier.padding(start = 6.dp, top = 6.dp), fontSize = 52.sp, tiers = 3)
         }
         Column(Modifier.width(132.dp).padding(top = 8.dp)) {
             val mx = (week.maxOrNull() ?: 0).coerceAtLeast(1)
@@ -514,7 +514,7 @@ private fun AddNumberSheet(onDismiss: () -> Unit, onAdd: (String, String) -> Uni
         Spacer(Modifier.height(8.dp))
         SheetInput(number, "Phone number", KeyboardType.Phone) { number = it }
         Spacer(Modifier.height(16.dp))
-        GlassPrimaryButton("Add", enabled = valid) { onAdd(name.trim(), number.trim()); onDismiss() }
+        FgPrimaryButton("Add", enabled = valid) { onAdd(name.trim(), number.trim()); onDismiss() }
     }
 }
 
@@ -573,7 +573,7 @@ fun AppsScreen(back: () -> Unit) {
                 Box(Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     GlassBack(back, Modifier.align(Alignment.CenterStart))
                     Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        GlowText("Allowed Apps During Focus", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+                        FgGlowText("Allowed Apps During Focus", fontSize = 26.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
                         Text("Everything else is locked.", color = C.Text2, fontSize = 15.sp)
                     }
                 }
@@ -587,7 +587,7 @@ fun AppsScreen(back: () -> Unit) {
                 }
             }
             item {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp).height(52.dp).glassSurface(18.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp).height(52.dp).fgSurface(18.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Ico(R.drawable.focus_search_white, 22.dp, C.Text2)
                     Box(Modifier.weight(1f).padding(start = 14.dp)) {
                         if (q.isEmpty()) Text("Search apps...", color = C.Text3, fontSize = 17.sp)
@@ -609,14 +609,14 @@ fun AppsScreen(back: () -> Unit) {
                 AppToggleRow(a.pkg, a.label, a.category, on) { selected = if (on) selected - a.pkg else selected + a.pkg }
             }
             item {
-                Row(Modifier.fillMaxWidth().padding(top = 6.dp).glassSurface(18.dp).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    GlassTile(40.dp, 12.dp) { Ico(R.drawable.ic_settings, 22.dp) }
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp).fgSurface(18.dp).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FgTile(40.dp, 12.dp) { Ico(R.drawable.ic_settings, 22.dp) }
                     Text("Settings is always blocked during a session.", color = C.White, fontSize = 15.sp, modifier = Modifier.padding(start = 12.dp))
                 }
             }
         }
         Spacer(Modifier.height(10.dp))
-        GlassPrimaryButton("Save allowed apps") { store.allowedApps = selected; back() }
+        FgPrimaryButton("Save allowed apps") { store.allowedApps = selected; back() }
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -625,7 +625,7 @@ fun AppsScreen(back: () -> Unit) {
 private fun ShortcutTile(label: String, glyph: @Composable () -> Unit) {
     Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(76.dp)) {
-            Box(Modifier.align(Alignment.BottomStart).size(68.dp).glassSurface(20.dp), contentAlignment = Alignment.Center) { glyph() }
+            Box(Modifier.align(Alignment.BottomStart).size(68.dp).fgSurface(20.dp), contentAlignment = Alignment.Center) { glyph() }
             Box(Modifier.align(Alignment.TopEnd).size(22.dp).clip(CircleShape).background(Color(0xFFF2F2F4)), contentAlignment = Alignment.Center) {
                 Ico(R.drawable.focus_checkmark_black, 14.dp, Color.Black)
             }
@@ -664,14 +664,14 @@ private fun MonoGlyph(a: AppRowData) {
 @Composable
 private fun AppToggleRow(pkg: String?, label: String, category: String, on: Boolean, onToggle: (() -> Unit)?) {
     Row(
-        Modifier.fillMaxWidth().height(66.dp).glassSurface(18.dp)
+        Modifier.fillMaxWidth().height(66.dp).fgSurface(18.dp)
             .then(if (onToggle != null) Modifier.clickable(role = androidx.compose.ui.semantics.Role.Switch) { onToggle() } else Modifier)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Real (coloured) launcher icon from PackageManager; clean tile if the package is unavailable.
         if (pkg != null && Allowed.isInstalled(LocalContext.current, pkg)) AppIcon(pkg, 46.dp)
-        else GlassTile(46.dp, 12.dp) { Ico(R.drawable.focus_phone_call_white, 24.dp) }
+        else FgTile(46.dp, 12.dp) { Ico(R.drawable.focus_phone_call_white, 24.dp) }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(label, color = C.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(category, color = C.Text2, fontSize = 14.sp, maxLines = 1)
@@ -713,27 +713,27 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                GlowText("Time Bank", fontSize = 32.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+                FgGlowText("Time Bank", fontSize = 32.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
                 Text("Earn time. Use it wisely.", color = C.Text2, fontSize = 15.sp)
             }
             GlassOutlineButton("How it works", icon = R.drawable.focus_clock_white, height = 42.dp, fontSize = 14.sp) { help = true }
         }
 
         // Hero
-        Column(Modifier.fillMaxWidth().glassSurface(24.dp).padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().fgSurface(24.dp).padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassTile(40.dp, 12.dp) { Ico(R.drawable.ic_database, 22.dp) }
+                FgTile(40.dp, 12.dp) { Ico(R.drawable.ic_database, 22.dp) }
                 Text("YOUR TIME BANK", color = C.Text2, fontSize = 11.sp, letterSpacing = 2.sp, modifier = Modifier.padding(start = 12.dp))
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    GlowText("${day.earnedTotal} min", Modifier.padding(top = 6.dp), fontSize = 62.sp, lineHeight = 68.sp, fontWeight = FontWeight.Bold, tiers = 3)
+                    FgGlowText("${day.earnedTotal} min", Modifier.padding(top = 6.dp), fontSize = 62.sp, lineHeight = 68.sp, fontWeight = FontWeight.Bold, tiers = 3)
                     Text("earned today", color = C.White.copy(alpha = 0.92f), fontSize = 22.sp)
                 }
                 TimeStackArt(Modifier.size(width = 112.dp, height = 132.dp))
             }
             Spacer(Modifier.height(4.dp))
-            GlowBar(if (day.earnedTotal > 0) day.fromPool / day.earnedTotal.toFloat() else 0f, thickness = 9.dp)
+            FgBar(if (day.earnedTotal > 0) day.fromPool / day.earnedTotal.toFloat() else 0f, thickness = 9.dp)
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${day.earnedTotal} min earned", color = C.White, fontSize = 14.sp)
                 Text("${day.fromPool} min spent", color = C.White, fontSize = 14.sp)
@@ -749,10 +749,10 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
             val alloc = day.alloc[r.pkg] ?: 0
             val avail = minOf(bank, (r.limitMin - alloc).coerceAtLeast(0))
             val rem = Enforcer.remainingMin(ctx, store, r.pkg)
-            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).glassSurface(18.dp).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp).fgSurface(18.dp).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 AppIcon(r.pkg, 46.dp)
                 Spacer(Modifier.width(8.dp))
-                GlowRing(if (r.limitMin > 0) (rem / r.limitMin.toFloat()).coerceIn(0f, 1f) else 0f, Modifier.size(34.dp), stroke = 2.5.dp, animate = false)
+                FgRing(if (r.limitMin > 0) (rem / r.limitMin.toFloat()).coerceIn(0f, 1f) else 0f, Modifier.size(34.dp), stroke = 2.5.dp, animate = false)
                 Column(Modifier.weight(1f).padding(start = 4.dp)) {
                     Text(appLabel(ctx, r.pkg), color = C.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -779,18 +779,18 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
             Text("Earn more time", color = C.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("Complete these to add to your Time Bank", color = C.Text2, fontSize = 11.sp, maxLines = 1)
         }
-        Column(Modifier.fillMaxWidth().glassSurface(22.dp)) {
+        Column(Modifier.fillMaxWidth().fgSurface(22.dp)) {
             earn.forEachIndexed { i, e ->
                 if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
                 Row(Modifier.fillMaxWidth().clickable { e.onClick() }.padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    GlassTile(46.dp, 13.dp) { Ico(e.glyph, 26.dp) }
+                    FgTile(46.dp, 13.dp) { Ico(e.glyph, 26.dp) }
                     Spacer(Modifier.width(8.dp))
-                    GlowRing((e.prog / e.target).toFloat(), Modifier.size(38.dp), stroke = 3.dp, animate = false)
+                    FgRing((e.prog / e.target).toFloat(), Modifier.size(38.dp), stroke = 3.dp, animate = false)
                     Column(Modifier.weight(1f).padding(start = 6.dp)) {
                         Text(e.title, color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(e.sub, color = C.Text2, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f)) { GlowBar((e.prog / e.target).toFloat(), thickness = 4.dp, glow = false) }
+                            Box(Modifier.weight(1f)) { FgBar((e.prog / e.target).toFloat(), thickness = 4.dp, glow = false) }
                             Text(e.label, color = C.Text2, fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
@@ -802,8 +802,8 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
         }
 
         // Reset card
-        Row(Modifier.fillMaxWidth().padding(top = 14.dp).glassSurface(20.dp).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassTile(48.dp, 14.dp) { Ico(R.drawable.focus_calendar_white, 26.dp) }
+        Row(Modifier.fillMaxWidth().padding(top = 14.dp).fgSurface(20.dp).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            FgTile(48.dp, 14.dp) { Ico(R.drawable.focus_calendar_white, 26.dp) }
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text("Resets at midnight", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text("Your Time Bank will reset in", color = C.Text2, fontSize = 13.sp)
@@ -843,7 +843,7 @@ private fun Colon() = Text(":", color = C.White, fontSize = 24.sp, modifier = Mo
 @Composable
 private fun CountUnit(v: String, l: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        GlowText(v, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
+        FgGlowText(v, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, tiers = 2)
         Text(l, color = C.Text2, fontSize = 8.sp, letterSpacing = 0.4.sp, maxLines = 1)
     }
 }

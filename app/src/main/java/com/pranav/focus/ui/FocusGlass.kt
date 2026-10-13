@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
  * No platform blur is required for ordinary cards (gradients only), so it runs fine on an A32.
  */
 
-object G {
+object FG {
     val Base = Color(0xFF080809)
     val Tile = Color(0xFF0E0E0F)
     val Edge = Color.White
@@ -64,9 +64,9 @@ const val STD_MS = 220
 const val RING_MS = 650
 
 /** Smoked-glass surface: base, faint top-left reflection, diagonal gradient, 1dp edge, top specular. */
-fun Modifier.glassSurface(radius: Dp = 22.dp): Modifier {
+fun Modifier.fgSurface(radius: Dp = 22.dp): Modifier {
     val shape = RoundedCornerShape(radius)
-    return this.clip(shape).background(G.Base).drawBehind {
+    return this.clip(shape).background(FG.Base).drawBehind {
         val w = size.width; val h = size.height
         drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.055f), Color.Transparent), center = Offset.Zero, radius = 260.dp.toPx()))
         drawRect(Brush.linearGradient(
@@ -83,10 +83,10 @@ fun Modifier.glassSurface(radius: Dp = 22.dp): Modifier {
 
 /** Raised icon tile: near-black, restrained reflection, 12% edge. Glyph is drawn by the caller, separately and crisp. */
 @Composable
-fun GlassTile(size: Dp = 52.dp, radius: Dp = 15.dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun FgTile(size: Dp = 52.dp, radius: Dp = 15.dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(radius)
     Box(
-        modifier.size(size).clip(shape).background(G.Tile).drawBehind {
+        modifier.size(size).clip(shape).background(FG.Tile).drawBehind {
             drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), center = Offset(this.size.width * 0.25f, 0f), radius = this.size.width))
             val s = 1.dp.toPx()
             drawLine(Color.White.copy(alpha = 0.08f), Offset(radius.toPx(), s), Offset(this.size.width - radius.toPx(), s), s)
@@ -112,7 +112,7 @@ private inline fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIntoNati
 
 /** Primary white CTA: 6dp @25% + 18dp @16% halo. */
 @Composable
-fun GlassPrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+fun FgPrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
         modifier.fillMaxWidth().height(56.dp)
             .then(if (enabled) Modifier.whiteHalo(28.dp, 18.dp to 0.16f, 6.dp to 0.25f) else Modifier)
@@ -146,7 +146,7 @@ fun GlassChip(text: String, selected: Boolean, modifier: Modifier = Modifier, on
     Box(
         modifier.height(48.dp)
             .then(if (selected) Modifier.whiteHalo(24.dp, 14.dp to 0.16f, 5.dp to 0.22f) else Modifier)
-            .then(if (selected) Modifier.clip(CircleShape).background(C.White) else Modifier.glassSurface(24.dp))
+            .then(if (selected) Modifier.clip(CircleShape).background(C.White) else Modifier.fgSurface(24.dp))
             .clickable(role = Role.Button) { onClick() },
         contentAlignment = Alignment.Center,
     ) { Text(text, color = Color(1f - bg, 1f - bg, 1f - bg), fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
@@ -157,7 +157,7 @@ fun GlassChip(text: String, selected: Boolean, modifier: Modifier = Modifier, on
  * so only the shadows differ; the top layer is never blurred. Use for hero values only.
  */
 @Composable
-fun GlowText(
+fun FgGlowText(
     text: String, modifier: Modifier = Modifier, fontSize: TextUnit, fontWeight: FontWeight = FontWeight.Bold,
     color: Color = C.White, lineHeight: TextUnit = TextUnit.Unspecified, letterSpacing: TextUnit = TextUnit.Unspecified,
     tiers: Int = 3, maxLines: Int = 1,
@@ -176,7 +176,7 @@ fun GlowText(
 
 /** Dark track + three-pass white arc (wide faint, mid, crisp core with round caps). */
 @Composable
-fun GlowRing(progress: Float, modifier: Modifier = Modifier, stroke: Dp = 6.dp, animate: Boolean = true) {
+fun FgRing(progress: Float, modifier: Modifier = Modifier, stroke: Dp = 6.dp, animate: Boolean = true) {
     val anim = animate && !reduceMotion()
     val p by animateFloatAsState(progress.coerceIn(0f, 1f), tween(if (anim) RING_MS else 0, easing = Ease), label = "ring")
     Canvas(modifier) {
@@ -196,7 +196,7 @@ fun GlowRing(progress: Float, modifier: Modifier = Modifier, stroke: Dp = 6.dp, 
 
 /** Horizontal bar with the same three-pass construction. Height is the crisp core thickness. */
 @Composable
-fun GlowBar(frac: Float, modifier: Modifier = Modifier, thickness: Dp = 8.dp, glow: Boolean = true, animate: Boolean = true) {
+fun FgBar(frac: Float, modifier: Modifier = Modifier, thickness: Dp = 8.dp, glow: Boolean = true, animate: Boolean = true) {
     val anim = animate && !reduceMotion()
     val p by animateFloatAsState(frac.coerceIn(0f, 1f), tween(if (anim) RING_MS else 0, easing = Ease), label = "bar")
     Canvas(modifier.fillMaxWidth().height(thickness * (if (glow) 3.4f else 1f))) {
@@ -251,7 +251,7 @@ fun CheckBadge(size: Dp = 34.dp, modifier: Modifier = Modifier) {
 @Composable
 fun GlassBack(onBack: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(44.dp).glassSurface(22.dp).clickable(role = Role.Button) { onBack() },
+        modifier.size(44.dp).fgSurface(22.dp).clickable(role = Role.Button) { onBack() },
         contentAlignment = Alignment.Center,
     ) { Ico(com.pranav.focus.R.drawable.focus_back_chevron_white, 22.dp) }
 }
