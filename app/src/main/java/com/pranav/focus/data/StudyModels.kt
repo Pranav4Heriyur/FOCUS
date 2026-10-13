@@ -9,13 +9,21 @@ enum class Subject(val label: String, val maxMarks: Int) {
     companion object { fun byLabel(s: String) = values().firstOrNull { it.label.equals(s, true) } }
 }
 
+/** Sub-sections per subject (user can move a chapter between them). */
+fun groupsFor(s: Subject): List<String> = when (s) {
+    Subject.BIOLOGY -> listOf("Botany", "Zoology")
+    Subject.CHEMISTRY -> listOf("Physical", "Organic", "Inorganic")
+    else -> emptyList()
+}
+
 enum class Source(val label: String) { NCERT("NCERT"), PYQ("PYQ"), MODULE("Module"), MOCK("Mock") }
 enum class MistakeType(val label: String) { CONCEPT("Concept"), SILLY("Silly"), CALC("Calculation"), GUESS("Guess"), TIME("Time") }
 
-data class Chapter(val id: Int, val subject: Subject, val name: String)
+data class Chapter(val id: Int, val subject: Subject, val name: String, val group: String = "", val active: Boolean = true)
+data class Book(val id: Int, val name: String, val active: Boolean = true)
 data class QLog(
     val id: Long, val ts: Long, val subject: Subject, val chapterId: Int, val source: Source,
-    val correct: Int, val wrong: Int, val skipped: Int, val minutes: Int, val verified: Boolean,
+    val correct: Int, val wrong: Int, val skipped: Int, val minutes: Int, val verified: Boolean, val bookId: Int = 0,
 ) { val attempted get() = correct + wrong }
 
 data class Mock(val id: Long, val date: String, val name: String, val c: List<Int>, val w: List<Int>, val s: List<Int>, val target: Int) {

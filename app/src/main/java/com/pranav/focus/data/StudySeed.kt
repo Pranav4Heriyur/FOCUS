@@ -28,6 +28,20 @@ object StudySeed {
         "Biotechnology: Applications", "Organisms and Populations", "Ecosystem", "Biodiversity and Conservation",
     )
 
+    private val ZOOLOGY = setOf("Animal Kingdom", "Structural Organisation in Animals", "Breathing and Exchange of Gases", "Body Fluids and Circulation",
+        "Excretory Products", "Locomotion and Movement", "Neural Control and Coordination", "Chemical Coordination", "Human Reproduction",
+        "Reproductive Health", "Evolution", "Human Health and Disease", "Principles of Inheritance and Variation", "Molecular Basis of Inheritance")
+    private val CHEM_PHYSICAL = setOf("Some Basic Concepts of Chemistry", "Structure of Atom", "Thermodynamics", "Equilibrium", "Redox Reactions", "Solutions", "Electrochemistry", "Chemical Kinetics")
+    private val CHEM_INORGANIC = setOf("Classification of Elements and Periodicity", "Chemical Bonding and Molecular Structure", "p-Block Elements", "d- and f-Block Elements", "Coordination Compounds")
+
+    fun groupOf(s: Subject, name: String): String = when (s) {
+        Subject.BIOLOGY -> if (name in ZOOLOGY) "Zoology" else "Botany"
+        Subject.CHEMISTRY -> if (name in CHEM_PHYSICAL) "Physical" else if (name in CHEM_INORGANIC) "Inorganic" else "Organic"
+        else -> ""
+    }
+
+    val BOOKS = listOf("NCERT", "PYQ", "Module", "Mock")
+
     fun all(): List<Pair<Subject, String>> =
         PHYSICS.map { Subject.PHYSICS to it } + CHEMISTRY.map { Subject.CHEMISTRY to it } + BIOLOGY.map { Subject.BIOLOGY to it }
 }

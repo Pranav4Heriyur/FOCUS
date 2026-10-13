@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,12 +75,14 @@ sealed class SR {
     data class MockRes(val id: Long) : SR()
     data class Notebook(val subject: Subject? = null) : SR()
     object Stats : SR()
+    object Syllabus : SR()
 }
 
 /** Snapshot of everything the Study screens read. Always derived from the persisted tables. */
-class SData(val chapters: List<Chapter>, val logs: List<QLog>, val mocks: List<Mock>, val mistakes: List<Mistake>, val db: StudyDb) {
+class SData(val chapters: List<Chapter>, val books: List<com.pranav.focus.data.Book>, val logs: List<QLog>, val mocks: List<Mock>, val mistakes: List<Mistake>, val db: StudyDb) {
     private val zone = ZoneId.systemDefault()
     fun day(l: QLog): LocalDate = Instant.ofEpochMilli(l.ts).atZone(zone).toLocalDate()
+    val active get() = chapters.filter { it.active }
     fun chapter(id: Int) = chapters.firstOrNull { it.id == id }
     fun between(from: LocalDate, toExcl: LocalDate) = logs.filter { day(it) >= from && day(it) < toExcl }
     fun week(offset: Int): List<QLog> { val end = LocalDate.now().plusDays(1).minusDays(7L * offset); return between(end.minusDays(7), end) }
@@ -105,7 +108,7 @@ fun StudyRoot(go: (Screen) -> Unit) {
     val tick = AppState.dataTick + ver
     val data = remember(tick) {
         val db = StudyDb.get(ctx)
-        SData(db.chapters(), db.logs(), db.mocks(), db.mistakes(), db)
+        SData(db.chapters(true), db.books(true), db.logs(), db.mocks(), db.mistakes(), db)
     }
     fun push(r: SR) { stack.add(r) }
     fun pop() { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
@@ -121,6 +124,7 @@ fun StudyRoot(go: (Screen) -> Unit) {
             is SR.MockRes -> MockResult(data, r.id, ::pop, ::push)
             is SR.Notebook -> Notebook(data, r.subject, ::pop, bump)
             SR.Stats -> StatsScreen2(data, ::pop)
+            SR.Syllabus -> Syllabus(data, ::pop, ::push, bump)
         }
     }
 }
@@ -173,7 +177,7 @@ private fun StudyHub(d: SData, push: (SR) -> Unit) {
             }
         }
         Reveal(4) {
-            val weak = StudyLogic.weakest(d.chapters.map { it to d.chapterTally(it.id) }).take(3)
+            val weak = StudyLogic.weakest(d.active.map { it to d.chapterTally(it.id) }).take(3)
             SectionCard(pad = 14.dp) {
                 Text("Weak chapters", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
@@ -208,6 +212,13 @@ private fun StudyHub(d: SData, push: (SR) -> Unit) {
                 }
             }
         }
+        SectionCard(onClick = { push(SR.Syllabus) }, pad = 14.dp, radius = 20.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Ico(R.drawable.plan_ic_list_checks, 22.dp)
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text("Syllabus tracker", color = C.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold); Text("All chapters, books, last done, accuracy", color = C.Text2, fontSize = 12.sp) }
+                Ico(R.drawable.p1_chevron_right, 18.dp, C.Text2)
+            }
+        }
         PrimaryButton("Log questions") { push(SR.Log()) }
     }
 }
@@ -229,7 +240,8 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
     val store = remember { Store.get(ctx) }
     var subject by remember { mutableIntStateOf((r.subject ?: d.chapter(r.chapterId ?: -1)?.subject ?: Subject.PHYSICS).ordinal) }
     var chapterId by remember { mutableIntStateOf(r.chapterId ?: -1) }
-    var source by remember { mutableIntStateOf(Source.NCERT.ordinal) }
+    var bookId by remember { mutableIntStateOf(d.books.firstOrNull { it.active }?.id ?: 0) }
+    var newBook by remember { mutableStateOf(false) }
     var c by remember { mutableIntStateOf(0) }
     var w by remember { mutableIntStateOf(0) }
     var s by remember { mutableIntStateOf(0) }
@@ -238,7 +250,7 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
     val types = remember { mutableStateListOf<MistakeType>() }
     var picking by remember { mutableStateOf(false) }
     val sub = Subject.values()[subject]
-    val chapters = d.chapters.filter { it.subject == sub }
+    val chapters = d.active.filter { it.subject == sub }
     val chap = chapters.firstOrNull { it.id == chapterId } ?: chapters.first().also { chapterId = it.id }
     val t = Tally(c, w, s)
 
@@ -261,11 +273,13 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
         }
     }
     Spacer(Modifier.height(14.dp))
-    Text("Source", color = C.Text2, fontSize = 12.sp)
+    Text("Book / source", color = C.Text2, fontSize = 12.sp)
     Spacer(Modifier.height(6.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Source.values().forEach { so -> Pill(so.label, filled = source == so.ordinal, modifier = Modifier.weight(1f), onClick = { source = so.ordinal }) }
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        d.books.filter { it.active }.forEach { b -> Pill(b.name, filled = bookId == b.id, onClick = { bookId = b.id }) }
+        Pill("+ New") { newBook = true }
     }
+    if (newBook) NameDialog("Add book or source", "", emptyList(), "", { newBook = false }) { n, _ -> bookId = d.db.addBook(n).toInt(); newBook = false; bump() }
     Spacer(Modifier.height(14.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         StepperTile("Correct", c, 0, Modifier.weight(1f)) { c = it }
@@ -307,9 +321,10 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
     PrimaryButton("Save", enabled = t.attempted + s > 0) {
         val now = System.currentTimeMillis()
         val inLast = now - store.long("last_session_end") < 60 * 60_000L
-        d.db.insertLog(QLog(0, now, sub, chap.id, Source.values()[source], c, w, s, minutes, inLast))
+        val bookName = d.books.firstOrNull { it.id == bookId }?.name ?: "Practice"
+        d.db.insertLog(QLog(0, now, sub, chap.id, Source.values().getOrElse(bookId - 1) { Source.NCERT }, c, w, s, minutes, inLast, bookId))
         if (w > 0) types.forEach { m ->
-            d.db.insertMistake(Mistake(0, sub, chap.id, "${Source.values()[source].label} · ${chap.name}", m, "", LocalDate.now().toString(), 0))
+            d.db.insertMistake(Mistake(0, sub, chap.id, "$bookName · ${chap.name}", m, "", LocalDate.now().toString(), 0))
         }
         val key = "study_${store.today()}"
         store.putInt(key, store.int(key) + t.attempted)
@@ -361,7 +376,7 @@ private fun SubjectDetail(d: SData, s: Subject, back: () -> Unit, push: (SR) -> 
     Spacer(Modifier.height(12.dp))
     when (tab) {
         0 -> {
-            val rows = d.chapters.filter { it.subject == s }.map { it to d.chapterTally(it.id) }
+            val rows = d.active.filter { it.subject == s }.map { it to d.chapterTally(it.id) }
                 .sortedWith(compareBy({ it.second.attempted == 0 }, { it.second.accPct }))
             SectionCard(pad = 4.dp) {
                 Text("Chapters (weakest first)", color = C.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(12.dp))
@@ -447,6 +462,8 @@ private fun ChapterDetail(d: SData, id: Int, back: () -> Unit, push: (SR) -> Uni
             }
         }
     }
+    Spacer(Modifier.height(12.dp))
+    ChapterBooks(d, id)
     Spacer(Modifier.height(12.dp))
     SectionCard(pad = 14.dp) {
         Text("Last 3 sessions", color = C.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
