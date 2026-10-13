@@ -99,6 +99,26 @@ class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
         return out
     }
 
+    /** Total attempted (correct + wrong) for logs with ts in [fromMs, toMs). */
+    fun attemptedBetween(fromMs: Long, toMs: Long): Int =
+        readableDatabase.rawQuery("SELECT COALESCE(SUM(correct + wrong), 0) FROM question_log WHERE ts >= ? AND ts < ?", arrayOf(fromMs.toString(), toMs.toString())).use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+
+    /** Saves a log and its mistake notes atomically: either all rows exist or none do. */
+    fun insertLogWithMistakes(l: QLog, mistakes: List<Mistake>): Long {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val id = insertLog(l)
+            mistakes.forEach { insertMistake(it) }
+            db.setTransactionSuccessful()
+            return id
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     // ---- mocks -----------------------------------------------------------------
     fun insertMock(m: Mock): Long = writableDatabase.insert("mock_test", null, ContentValues().apply {
         put("date", m.date); put("name", m.name)
@@ -134,7 +154,7 @@ class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
 
     fun markRevised(m: Mistake) {
         writableDatabase.update("mistake", ContentValues().apply {
-            put("done_count", m.doneCount + 1); put("due", StudyLogic.nextDue(LocalDate.now(), m.doneCount).toString())
+            put("done_count", m.doneCount + 1); put("due", StudyLogic.nextDue(AppClock.today(), m.doneCount).toString())
         }, "id = ?", arrayOf(m.id.toString()))
     }
 

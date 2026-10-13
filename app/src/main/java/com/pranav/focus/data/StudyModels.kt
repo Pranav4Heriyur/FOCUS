@@ -59,7 +59,7 @@ object StudyLogic {
 
     fun nextDue(today: LocalDate, doneCount: Int): LocalDate = today.plusDays(INTERVALS[min(doneCount, INTERVALS.lastIndex)].toLong())
 
-    fun daysTo(target: LocalDate, today: LocalDate = LocalDate.now()): Long = java.time.temporal.ChronoUnit.DAYS.between(today, target)
+    fun daysTo(target: LocalDate, today: LocalDate = AppClock.today()): Long = java.time.temporal.ChronoUnit.DAYS.between(today, target)
 
     /** Change in accuracy percentage points, or null when either period has no attempts. */
     fun deltaPct(cur: Tally, prev: Tally): Int? = if (cur.attempted == 0 || prev.attempted == 0) null else cur.accPct - prev.accPct

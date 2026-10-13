@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -85,7 +86,7 @@ class SData(val chapters: List<Chapter>, val books: List<com.pranav.focus.data.B
     val active get() = chapters.filter { it.active }
     fun chapter(id: Int) = chapters.firstOrNull { it.id == id }
     fun between(from: LocalDate, toExcl: LocalDate) = logs.filter { day(it) >= from && day(it) < toExcl }
-    fun week(offset: Int): List<QLog> { val end = LocalDate.now().plusDays(1).minusDays(7L * offset); return between(end.minusDays(7), end) }
+    fun week(offset: Int): List<QLog> { val end = AppClock.today().plusDays(1).minusDays(7L * offset); return between(end.minusDays(7), end) }
     fun chapterTally(id: Int) = logs.filter { it.chapterId == id }.tally()
 }
 
@@ -134,7 +135,7 @@ fun StudyRoot(go: (Screen) -> Unit) {
 // ---------------------------------------------------------------------------------------
 @Composable
 private fun StudyHub(d: SData, push: (SR) -> Unit) {
-    val today = d.between(LocalDate.now(), LocalDate.now().plusDays(1))
+    val today = d.between(AppClock.today(), AppClock.today().plusDays(1))
     val tt = today.tally()
     val days = StudyLogic.daysTo(d.db.neetDate)
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -249,6 +250,7 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
     var minutes by remember { mutableIntStateOf(0) }
     val types = remember { mutableStateListOf<MistakeType>() }
     var picking by remember { mutableStateOf(false) }
+    var saved by remember { mutableStateOf(false) } // a double tap must not log (or award XP) twice
     val sub = Subject.values()[subject]
     val chapters = d.active.filter { it.subject == sub }
     val chap = chapters.firstOrNull { it.id == chapterId } ?: chapters.first().also { chapterId = it.id }
@@ -318,22 +320,21 @@ private fun QuickLog(d: SData, r: SR.Log, back: () -> Unit, bump: () -> Unit) {
         }
     }
     Spacer(Modifier.height(16.dp))
-    PrimaryButton("Save", enabled = t.attempted + s > 0) {
+    PrimaryButton("Save", enabled = t.attempted + s > 0 && !saved) {
+      if (!saved) {
+        saved = true
         val now = System.currentTimeMillis()
         val inLast = now - store.long("last_session_end") < 60 * 60_000L
         val bookName = d.books.firstOrNull { it.id == bookId }?.name ?: "Practice"
-        d.db.insertLog(QLog(0, now, sub, chap.id, Source.values().getOrElse(bookId - 1) { Source.NCERT }, c, w, s, minutes, inLast, bookId))
-        if (w > 0) types.forEach { m ->
-            d.db.insertMistake(Mistake(0, sub, chap.id, "$bookName · ${chap.name}", m, "", LocalDate.now().toString(), 0))
-        }
-        val key = "study_${store.today()}"
-        store.putInt(key, store.int(key) + t.attempted)
+        val notes = if (w > 0) types.map { m -> Mistake(0, sub, chap.id, "$bookName · ${chap.name}", m, "", AppClock.today().toString(), 0) } else emptyList()
+        d.db.insertLogWithMistakes(QLog(0, now, sub, chap.id, Source.values().getOrElse(bookId - 1) { Source.NCERT }, c, w, s, minutes, inLast, bookId), notes)
         if (r.taskId.isNotEmpty()) store.putInt("tq_${r.taskId}", store.int("tq_${r.taskId}") + t.attempted)
         val xpKey = "studyxp_${store.today()}"
         val gain = StudyLogic.xpFor(t.attempted, c, store.int(xpKey))
         store.putInt(xpKey, store.int(xpKey) + gain); store.xp = store.xp + gain
         runCatching { Earning.evaluate(ctx) }
         bump(); back()
+      }
     }
 }
 
@@ -354,7 +355,7 @@ private fun SubjectDetail(d: SData, s: Subject, back: () -> Unit, push: (SR) -> 
     var tab by remember { mutableIntStateOf(0) }
     val all = d.logs.filter { it.subject == s }
     val tAll = all.tally()
-    val month = d.between(LocalDate.now().minusDays(29), LocalDate.now().plusDays(1)).filter { it.subject == s }.tally()
+    val month = d.between(AppClock.today().minusDays(29), AppClock.today().plusDays(1)).filter { it.subject == s }.tally()
     StudyTopBar("", null, back)
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconTile(subjectIcon(s), size = 56.dp)
@@ -404,7 +405,7 @@ private fun SubjectDetail(d: SData, s: Subject, back: () -> Unit, push: (SR) -> 
         1 -> { PrimaryButton("Open mistake notebook") { push(SR.Notebook(s)) } }
         else -> {
             val pts = (13 downTo 0).map { k ->
-                val day = LocalDate.now().minusDays(k.toLong())
+                val day = AppClock.today().minusDays(k.toLong())
                 val t = all.filter { d.day(it) == day }.tally(); if (t.attempted == 0) null else t.accPct / 100f
             }
             SectionCard { Text("Accuracy, last 14 days", color = C.White, fontSize = 14.sp); Spacer(Modifier.height(8.dp)); LineChart(listOf(pts), Modifier.fillMaxWidth().height(140.dp)) }
@@ -481,7 +482,7 @@ private fun ChapterDetail(d: SData, id: Int, back: () -> Unit, push: (SR) -> Uni
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         PrimaryButton("Log questions", modifier = Modifier.weight(1f)) { push(SR.Log(ch.subject, ch.id)) }
         GhostButton("Add to revision", modifier = Modifier.weight(1f)) {
-            d.db.insertMistake(Mistake(0, ch.subject, ch.id, "Revision · ${ch.name}", MistakeType.CONCEPT, "Added from chapter", LocalDate.now().toString(), 0)); bump()
+            d.db.insertMistake(Mistake(0, ch.subject, ch.id, "Revision · ${ch.name}", MistakeType.CONCEPT, "Added from chapter", AppClock.today().toString(), 0)); bump()
         }
     }
 }
@@ -504,7 +505,7 @@ private fun MockLogScreen(d: SData, back: () -> Unit, saved: (Long) -> Unit) {
                 androidx.compose.foundation.text.BasicTextField(name, { name = it }, singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(C.White))
-                Text(LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM yyyy")), color = C.Text2, fontSize = 12.sp)
+                Text(AppClock.today().format(DateTimeFormatter.ofPattern("d MMM yyyy")), color = C.Text2, fontSize = 12.sp)
             }
             Text("Score $score / 720", color = C.White, fontSize = 13.sp)
         }
@@ -526,7 +527,7 @@ private fun MockLogScreen(d: SData, back: () -> Unit, saved: (Long) -> Unit) {
     }
     Spacer(Modifier.height(16.dp))
     PrimaryButton("Save Test", enabled = c.sum() + w.sum() + u.sum() > 0) {
-        val id = d.db.insertMock(Mock(0, LocalDate.now().toString(), name.ifBlank { "Mock Test" }, c.toList(), w.toList(), u.toList(), d.db.targetScore))
+        val id = d.db.insertMock(Mock(0, AppClock.today().toString(), name.ifBlank { "Mock Test" }, c.toList(), w.toList(), u.toList(), d.db.targetScore))
         saved(id)
     }
 }
@@ -593,7 +594,7 @@ private fun MockResult(d: SData, id: Long, back: () -> Unit, push: (SR) -> Unit)
 @Composable
 private fun Notebook(d: SData, initial: Subject?, back: () -> Unit, bump: () -> Unit) {
     var f by remember { mutableIntStateOf(if (initial == null) 0 else initial.ordinal + 1) }
-    val today = LocalDate.now()
+    val today = AppClock.today()
     val rows = d.mistakes.filter { f == 0 || it.subject.ordinal == f - 1 }
     val due = d.mistakes.count { runCatching { LocalDate.parse(it.due) <= today }.getOrDefault(true) }
     StudyTopBar("Mistake Notebook", "Review, learn and don't repeat.", back) { Pill("Due today: $due") }
@@ -629,7 +630,7 @@ private fun Notebook(d: SData, initial: Subject?, back: () -> Unit, bump: () -> 
 @Composable
 private fun StatsScreen2(d: SData, back: () -> Unit) {
     var p by remember { mutableIntStateOf(0) }
-    val today = LocalDate.now()
+    val today = AppClock.today()
     val n = when (p) { 0 -> 7; 1 -> 30; else -> 84 }
     val step = if (p == 2) 7 else 1
     val buckets = (n / step - 1 downTo 0).map { k -> today.minusDays((k * step).toLong()) }

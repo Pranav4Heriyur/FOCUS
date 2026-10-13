@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -104,7 +105,7 @@ private fun Target(name: String, value: String, frac: Float) {
 // A14 Stats
 // --------------------------------------------------------------------------------------
 fun buckets(range: Int, f: (LocalDate) -> Double): Pair<List<Float>, List<String>> {
-    val today = LocalDate.now()
+    val today = AppClock.today()
     return when (range) {
         0 -> {
             val s = Weekly.weekStart()
@@ -228,7 +229,7 @@ fun StatsScreen(go: (com.pranav.focus.ui.Screen) -> Unit) {
                 val cell = (size.width - 11 * 4.dp.toPx()) / 12
                 for (c in 0 until 12) for (r in 0 until 7) {
                     val d = start.plusDays((c * 7 + r).toLong())
-                    if (d.isAfter(LocalDate.now())) continue
+                    if (d.isAfter(AppClock.today())) continue
                     val m = focusDays[d.toString()] ?: 0
                     val a = when { m <= 0 -> 0.08f; m < 30 -> 0.35f; m < 90 -> 0.65f; else -> 1f }
                     drawRoundRect(Color.White.copy(alpha = a), Offset(c * (cell + 4.dp.toPx()), r * (cell.coerceAtMost(14.dp.toPx()) + 2.dp.toPx())),
@@ -238,7 +239,7 @@ fun StatsScreen(go: (com.pranav.focus.ui.Screen) -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         FocusCard(Modifier.fillMaxWidth()) {
-            Text("“${QUOTES[LocalDate.now().dayOfYear % QUOTES.size]}”", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.Light, lineHeight = 26.sp)
+            Text("“${QUOTES[AppClock.today().dayOfYear % QUOTES.size]}”", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.Light, lineHeight = 26.sp)
         }
         Spacer(Modifier.height(12.dp))
         NavRow(R.drawable.ic_emoji_events, "Rank", Ranks.forXp(store.xp).name) { go(Screen.Rank) }

@@ -1,9 +1,11 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.pranav.focus.data.PlanDates
 import com.pranav.focus.data.Store
 import org.json.JSONArray
 import org.json.JSONObject
@@ -45,20 +47,37 @@ fun fmtD(m: Int): String = "${m / 60}h ${m % 60}m"
 
 object PlanState {
     var tasks by mutableStateOf<List<PlanTask>>(emptyList())
-    var date by mutableStateOf(LocalDate.now())
+    var date by mutableStateOf(AppClock.today())
     var selectedId by mutableStateOf<String?>(null)
     private var loaded = false
-    private var seenToday = LocalDate.now()
+    private var seenToday = AppClock.today()
 
-    /** If midnight passed while the app was open, jump the planner to the new day. */
-    fun syncToday() { val n = LocalDate.now(); if (n != seenToday) { seenToday = n; date = n } }
+    /** The real current local date (single clock). */
+    val today: LocalDate get() = AppClock.today()
+
+    /** Jump to the actual current date (fresh entry / "Today" button). */
+    fun selectToday() { seenToday = AppClock.today(); date = seenToday }
+
+    /**
+     * Call on resume and at midnight. Moves a selection that was following "today" onto the new day,
+     * but never overwrites an intentionally selected historical or future date.
+     */
+    fun syncToday() {
+        val n = AppClock.today()
+        if (n != seenToday) { date = PlanDates.followToday(date, seenToday, n); seenToday = n }
+    }
 
     fun load(ctx: Context) {
         if (loaded) return
         loaded = true
-        val raw = Store.get(ctx).str("plan_tasks", "")
-        tasks = if (raw.isBlank()) seed() else runCatching { decode(raw) }.getOrDefault(seed())
-        if (raw.isBlank()) save(ctx)
+        // No sample data: a new install is genuinely empty. If stored data cannot be parsed it is
+        // kept as a backup and never silently overwritten by an empty list.
+        val store = Store.get(ctx)
+        val raw = store.str("plan_tasks", "")
+        tasks = if (raw.isBlank()) emptyList() else runCatching { decode(raw) }.getOrElse {
+            store.putStr("plan_tasks_unreadable_backup", raw)
+            emptyList()
+        }
     }
 
     fun save(ctx: Context) = Store.get(ctx).putStr("plan_tasks", encode(tasks))
@@ -72,30 +91,9 @@ object PlanState {
 
     fun get(id: String?) = tasks.firstOrNull { it.id == id }
 
-    fun forDate(d: LocalDate = date) = tasks.filter { it.date == d.toString() }.sortedBy { it.start }
+    fun forDate(d: LocalDate = date) = tasks.filter { it.date == d.toString() }.sortedWith(compareBy<PlanTask>({ it.start }, { it.end }, { it.id }))
 
     fun newId() = UUID.randomUUID().toString()
-
-    /** SAMPLE data from the A18 concept board (kept distinct from real data: it is only seeded on first open). */
-    private fun seed(): List<PlanTask> {
-        val d = LocalDate.now().toString()
-        fun t(title: String, cat: String, subj: String, h: Int, m: Int, dur: Int, pr: Int = 1, done: Boolean = false, notes: String = "", cl: List<Pair<String, Boolean>> = emptyList()) =
-            PlanTask(newId(), d, title, cat, subj, h * 60 + m, dur, pr, notes, done, cl)
-        return listOf(
-            t("Run", "Workout", "Workout", 6, 0, 45, done = true),
-            t("Breakfast", "Personal", "Personal", 7, 30, 30, done = true),
-            t("Physics Practice", "Study", "Physics", 9, 0, 120, notes = "Chapter 5 - PYQs\nRevise key formulas",
-                cl = listOf("Revise key formulas" to true, "Solve 20 PYQs" to true, "Review mistakes" to false, "Summarise notes" to false, "Weak topics" to false)),
-            t("Break", "Personal", "Personal", 11, 30, 30),
-            t("Chemistry", "Study", "Chemistry", 12, 0, 90),
-            t("Lunch", "Personal", "Personal", 13, 0, 60),
-            t("Gym (Chest)", "Workout", "Workout", 14, 0, 60, 2, notes = "Chest + Triceps\nProgressive overload"),
-            t("Biology", "Study", "Biology", 16, 0, 120),
-            t("NEET Questions", "Study", "Physics", 19, 0, 60),
-            t("Dinner", "Personal", "Personal", 21, 0, 60),
-            t("Revision", "Study", "Other", 22, 0, 30),
-        )
-    }
 
     private fun encode(l: List<PlanTask>) = JSONArray(l.map {
         JSONObject().put("id", it.id).put("date", it.date).put("title", it.title).put("cat", it.category).put("subj", it.subject)

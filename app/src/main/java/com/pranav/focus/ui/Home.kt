@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -106,7 +107,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
         Reveal(4) {
             // The agenda IS today's Daily Planner (single source of truth).
             PlanState.load(ctx)
-            val todays = PlanState.forDate(LocalDate.now())
+            val todays = PlanState.forDate(AppClock.today())
             val items = todays.map { com.pranav.focus.data.AgendaItem(it.id, it.title, it.subject, it.subject, fmtT(it.start).trimStart('0')) }
             val doneSet = todays.filter { it.done }.map { it.id }.toSet()
             AgendaCard(items, doneSet, onToggle = { id -> PlanState.get(id)?.let { PlanState.upsert(ctx, it.copy(done = !it.done)) } }, onAdd = { go(Screen.PlanAdd) })
@@ -151,7 +152,7 @@ private fun Header(greeting: String, watchMe: Boolean, ver: Int, onPhoto: () -> 
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(greeting, color = Color(0xFFDDDDDD), fontSize = 14.sp, lineHeight = 17.sp)
             Text("Pranav", color = C.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
-            Text(LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy")), color = C.Text2, fontSize = 12.sp, lineHeight = 15.sp)
+            Text(AppClock.today().format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy")), color = C.Text2, fontSize = 12.sp, lineHeight = 15.sp)
         }
         Row(
             Modifier.height(38.dp).clip(CircleShape).background(C.Card).border(1.dp, C.Hairline, CircleShape).clickable { onWatch() }.padding(horizontal = 16.dp),
@@ -209,7 +210,7 @@ private fun HeroCard(store: Store, act: com.pranav.focus.data.Activity?, mode: I
 
 private fun relDay(date: String): String {
     val d = runCatching { LocalDate.parse(date) }.getOrNull() ?: return date
-    return when (java.time.temporal.ChronoUnit.DAYS.between(d, LocalDate.now())) {
+    return when (java.time.temporal.ChronoUnit.DAYS.between(d, AppClock.today())) {
         0L -> "Today"; 1L -> "Yesterday"; else -> d.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
     }
 }
@@ -617,7 +618,7 @@ private fun WorkoutCard(modifier: Modifier, onClick: () -> Unit) {
 // ---------------------------------------------------------------------------------------
 @Composable
 private fun WeeklyCard(focus: Map<String, Int>) {
-    val today = LocalDate.now()
+    val today = AppClock.today()
     val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
     val hours = days.map { (focus[it.toString()] ?: 0) / 60f }
     val max = (hours.maxOrNull() ?: 0f).coerceAtLeast(1f)

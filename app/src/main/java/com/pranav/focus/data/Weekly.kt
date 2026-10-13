@@ -8,7 +8,7 @@ object Weekly {
 
     val BASE = W(720, 3, 4, 400, 0.0)
 
-    fun weekStart(d: LocalDate = LocalDate.now()): LocalDate = d.minusDays((d.dayOfWeek.value - 1).toLong())
+    fun weekStart(d: LocalDate = AppClock.today()): LocalDate = d.minusDays((d.dayOfWeek.value - 1).toLong())
 
     fun stats(s: Store, start: LocalDate): W {
         val focus = s.focusDays()
@@ -17,7 +17,7 @@ object Weekly {
         for (i in 0..6) {
             val d = start.plusDays(i.toLong()).toString()
             f += focus[d] ?: 0
-            q += s.int("study_$d")
+            q += s.studyAttemptedOn(d)
             acts.filter { it.startDate == d }.forEach {
                 if (it.isRun) { runs++; km += it.distM / 1000.0 }
                 if (it.isRide) km += it.distM / 1000.0

@@ -25,7 +25,7 @@ class Store private constructor(ctx: Context) {
     fun strSet(k: String): Set<String> = sp.getStringSet(k, emptySet()) ?: emptySet()
     fun putSet(k: String, v: Set<String>) = sp.edit().putStringSet(k, v.toSet()).apply()
 
-    fun today(): String = LocalDate.now().toString()
+    fun today(): String = AppClock.today().toString()
 
     // ---- session -------------------------------------------------------------
     val sessionActive: Boolean get() = bool("s_active")
@@ -99,11 +99,11 @@ class Store private constructor(ctx: Context) {
         set(v) = putStr("callers", Codec.callers(v))
 
     private fun weekKey(): String {
-        val d = LocalDate.now()
+        val d = AppClock.today()
         return "blocked_" + d.minusDays((d.dayOfWeek.value - 1).toLong())
     }
 
-    fun addBlockedCall() = putInt("${weekKey()}_${LocalDate.now().dayOfWeek.value}", int("${weekKey()}_${LocalDate.now().dayOfWeek.value}") + 1)
+    fun addBlockedCall() = putInt("${weekKey()}_${AppClock.today().dayOfWeek.value}", int("${weekKey()}_${AppClock.today().dayOfWeek.value}") + 1)
     fun blockedCallsThisWeek(): List<Int> = (1..7).map { int("${weekKey()}_$it") }
 
     // ---- rules ---------------------------------------------------------------
@@ -133,7 +133,7 @@ class Store private constructor(ctx: Context) {
 
     fun saveDay(r: DayRec, date: String = today()) {
         val e = sp.edit().putString("day_$date", r.toJson())
-        val cutoff = LocalDate.now().minusDays(45).toString()
+        val cutoff = AppClock.today().minusDays(45).toString()
         sp.all.keys.filter { it.startsWith("day_") && it.substring(4) < cutoff }.forEach { e.remove(it) }
         e.apply()
     }
@@ -159,7 +159,7 @@ class Store private constructor(ctx: Context) {
     private fun addFocus(minutes: Int) {
         val m = Codec.intMap(str("focus_days"))
         m[today()] = (m[today()] ?: 0) + minutes
-        val cutoff = LocalDate.now().minusDays(400).toString()
+        val cutoff = AppClock.today().minusDays(400).toString()
         m.keys.removeAll { it < cutoff }
         putStr("focus_days", Codec.intMap(m))
     }
@@ -168,14 +168,14 @@ class Store private constructor(ctx: Context) {
     val streak: Int
         get() {
             val days = focusDays()
-            var d = LocalDate.now()
+            var d = AppClock.today()
             if ((days[d.toString()] ?: 0) <= 0) d = d.minusDays(1)
             var n = 0
             while ((days[d.toString()] ?: 0) > 0) { n++; d = d.minusDays(1) }
             return n
         }
 
-    fun recordCompleted(minutes: Int): Int {
+    @Synchronized fun recordCompleted(minutes: Int): Int {
         val earned = TimeBank.earnedFromFocus(minutes)
         xp += Rewards.xpForSession(minutes)
         totalFocusMinutes += minutes
@@ -198,7 +198,13 @@ class Store private constructor(ctx: Context) {
 
     fun activitiesOn(date: String): List<Activity> = activities.filter { it.startDate == date }
 
-    val studyToday: Int get() = int("study_${today()}")
+    /** Questions attempted (correct + wrong) on a local date, derived from the saved study logs (the single source of truth). */
+    fun studyAttemptedOn(date: String): Int {
+        val (from, to) = PlanDates.dayBoundsMs(LocalDate.parse(date), AppClock.zone())
+        return StudyDb.get(app).attemptedBetween(from, to)
+    }
+
+    val studyToday: Int get() = studyAttemptedOn(today())
 
     // ---- preferences -----------------------------------------------------------
     var watchMe: Boolean
@@ -270,10 +276,6 @@ class Store private constructor(ctx: Context) {
         get() = Codec.entries(str("jar", "[]"))
         set(v) = putStr("jar", Codec.entries(v))
 
-    var agenda: List<AgendaItem>
-        get() = Codec.agenda(str("agenda", "")).ifEmpty { DEFAULT_AGENDA }
-        set(v) = putStr("agenda", Codec.agenda(v))
-
     var avoided: List<Entry>
         get() = Codec.entries(str("avoided", "[]"))
         set(v) = putStr("avoided", Codec.entries(v))
@@ -299,14 +301,6 @@ class Store private constructor(ctx: Context) {
     }
 
     companion object {
-        val DEFAULT_AGENDA = listOf(
-            AgendaItem("run", "Run", "", "Run", "6:00 AM"),
-            AgendaItem("phy", "Focus: Physics", "", "Physics", "9:00 AM"),
-            AgendaItem("gym", "Gym: Push Day", "", "Workout", "1:00 PM"),
-            AgendaItem("chem", "Focus: Chemistry", "", "Chemistry", "4:00 PM"),
-            AgendaItem("mirror", "Accountability Mirror", "", "Mirror", "9:00 PM"),
-        )
-
         @Volatile private var inst: Store? = null
         fun get(ctx: Context): Store =
             inst ?: synchronized(this) { inst ?: Store(ctx).also { inst = it } }

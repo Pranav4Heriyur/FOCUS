@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -108,7 +109,7 @@ fun MirrorScreen(back: () -> Unit) {
     val ctx = LocalContext.current
     val store = remember { Store.get(ctx) }
     PlanState.load(ctx)
-    val today = LocalDate.now()
+    val today = AppClock.today()
     val tasks = PlanState.forDate(today)           // the agenda IS the Daily Planner
     var submitted by remember { mutableStateOf(store.reviewSubmitted()) }
     var avoided by remember { mutableStateOf("") }

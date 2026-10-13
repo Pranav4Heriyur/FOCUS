@@ -1,5 +1,6 @@
 package com.pranav.focus.lock
 
+import com.pranav.focus.data.AppClock
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -21,7 +22,7 @@ object Reminder {
 
     fun schedule(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
-        var t = LocalDate.now().atTime(21, 0)
+        var t = AppClock.today().atTime(21, 0)
         if (t.isBefore(LocalDateTime.now())) t = t.plusDays(1)
         val pi = PendingIntent.getBroadcast(ctx, 21, Intent(ctx, ReviewReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         am.set(AlarmManager.RTC, t.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), pi)

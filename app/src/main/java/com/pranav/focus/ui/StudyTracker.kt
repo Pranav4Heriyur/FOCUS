@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,7 +44,7 @@ import java.time.temporal.ChronoUnit
 
 fun agoText(day: LocalDate?): String {
     if (day == null) return "Never practised"
-    return when (val n = ChronoUnit.DAYS.between(day, LocalDate.now())) {
+    return when (val n = ChronoUnit.DAYS.between(day, AppClock.today())) {
         0L -> "Today"; 1L -> "Yesterday"; in 2..30 -> "${n}d ago"
         else -> day.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy"))
     }

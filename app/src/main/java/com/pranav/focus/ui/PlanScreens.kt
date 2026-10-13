@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -11,6 +12,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pranav.focus.R
+import com.pranav.focus.data.PlanDates
 import com.pranav.focus.data.Store
 import com.pranav.focus.lock.AppState
 import com.pranav.focus.lock.SessionController
@@ -63,8 +68,18 @@ import java.util.Locale
 @Composable
 fun PlanHost(screen: Screen, go: (Screen) -> Unit, back: () -> Unit) {
     PlanState.load(LocalContext.current)
-    PlanState.syncToday()
-    androidx.compose.runtime.LaunchedEffect(Unit) { PlanState.date = java.time.LocalDate.now() } // entering Plan always opens on today
+    // Fresh entry into the planner opens on the real current date.
+    LaunchedEffect(Unit) { PlanState.selectToday() }
+    // Resume (AppState.refresh bumps tick): refresh "today" without disturbing a deliberately chosen other date.
+    LaunchedEffect(AppState.tick) { PlanState.syncToday() }
+    // Midnight while the screen stays open.
+    LaunchedEffect(Unit) {
+        while (true) {
+            val now = java.time.ZonedDateTime.now(AppClock.zone())
+            delay(java.time.Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay(now.zone)).toMillis() + 500)
+            PlanState.syncToday()
+        }
+    }
     when (screen) {
         Screen.Plan -> PlanMain(go)
         Screen.PlanSubjects -> PlanSubjects(go, back)
@@ -188,17 +203,23 @@ private fun PlanMain(go: (Screen) -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Page(null, "Plan My Day", date.format(DateTimeFormatter.ofPattern("EEEE, d MMM")), trailing = {
+            if (date != PlanState.today) { PChip("Today", false) { PlanState.selectToday() }; Spacer(Modifier.width(8.dp)) }
             RoundBtn(R.drawable.plan_ic_calendar, "Calendar") { go(Screen.PlanCalendar) }
             Spacer(Modifier.width(8.dp))
             RoundBtn(R.drawable.plan_ic_more, "Plan settings") { go(Screen.PlanSettings) }
         }, navClear = true) {
-            // date strip
-            Row(Modifier.fillMaxWidth().enter(1), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                (-3..3).map { date.plusDays(it.toLong()) }.forEach { d ->
+            // date strip: real calendar dates around today; scrolls to the selected date
+            val today = PlanState.today
+            val strip = PlanDates.strip(today, date)
+            val stripState = rememberLazyListState(initialFirstVisibleItemIndex = (strip.indexOf(date) - 3).coerceAtLeast(0))
+            LaunchedEffect(date) { stripState.animateScrollToItem((PlanDates.strip(PlanState.today, date).let { it.indexOf(date) } - 3).coerceAtLeast(0)) }
+            LazyRow(Modifier.fillMaxWidth().enter(1), state = stripState, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(strip.size) { i ->
+                    val d = strip.at(i)
                     val sel = d == date
                     Column(
-                        Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(18.dp)).background(if (sel) C.White else C.Card)
-                            .border(1.dp, if (sel) C.White else C.Hairline, RoundedCornerShape(18.dp)).clickable { PlanState.date = d },
+                        Modifier.width(48.dp).height(64.dp).clip(RoundedCornerShape(18.dp)).background(if (sel) C.White else C.Card)
+                            .border(1.dp, if (sel) C.White else if (d == today) C.Text2 else C.Hairline, RoundedCornerShape(18.dp)).clickable { PlanState.date = d },
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
                         Text(d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH), color = if (sel) C.Black else C.Text2, fontSize = 11.sp)

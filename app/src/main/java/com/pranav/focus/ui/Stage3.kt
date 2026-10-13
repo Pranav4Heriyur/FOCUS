@@ -1,5 +1,6 @@
 package com.pranav.focus.ui
 
+import com.pranav.focus.data.AppClock
 import android.app.Activity
 import android.content.Intent
 import android.hardware.biometrics.BiometricManager
@@ -133,7 +134,7 @@ fun ConnectionsScreen(back: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             if (nOn) {
                 GhostButton("Send today’s summary") {
-                    Notion.pushAsync(ctx, "Focus · ${LocalDate.now()}",
+                    Notion.pushAsync(ctx, "Focus · ${AppClock.today()}",
                         "Focused ${Fmt.hm(store.todayFocusMinutes)} today. Streak ${store.streak} days. XP ${store.xp}.")
                 }
                 Spacer(Modifier.height(8.dp))
@@ -165,7 +166,7 @@ fun ConnectionsScreen(back: () -> Unit) {
             }
             val wins = remember(tick, watch) { store.watchWindows().sortedByDescending { it.first } }
             val zone = ZoneId.systemDefault()
-            val dayStart = LocalDate.now().atStartOfDay(zone).toInstant().toEpochMilli()
+            val dayStart = AppClock.today().atStartOfDay(zone).toInstant().toEpochMilli()
             val todayMs = wins.sumOf { (s, e) -> (e - maxOf(s, dayStart)).coerceAtLeast(0) }
             Spacer(Modifier.height(10.dp))
             Text("On wrist today: ${Fmt.hm((todayMs / 60_000).toInt())}", color = C.Text2, fontSize = 13.sp)
