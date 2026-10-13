@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -35,8 +36,14 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pranav.focus.R
@@ -95,21 +102,22 @@ private fun Modifier.enter(i: Int): Modifier {
 }
 
 @Composable
-private fun Page(onBack: (() -> Unit)?, title: String, sub: String? = null, trailing: @Composable RowScope.() -> Unit = {}, navClear: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+private fun Page(onBack: (() -> Unit)?, title: String, sub: String? = null, trailing: @Composable RowScope.() -> Unit = {}, navClear: Boolean = false, header: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
+        Modifier.fillMaxSize().ambientWash().verticalScroll(rememberScrollState()).statusBarsPadding()
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (navClear) NAV_CLEARANCE + 76.dp else 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(Modifier.fillMaxWidth().enter(0), verticalAlignment = Alignment.CenterVertically) {
+        if (header != null) Box(Modifier.fillMaxWidth().enter(0)) { header() }
+        else Row(Modifier.fillMaxWidth().enter(0), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(C.Card).border(1.dp, C.Hairline, CircleShape).clickable { onBack() }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(44.dp).glassSurface(22.dp, elevated = false).clickable { onBack() }, contentAlignment = Alignment.Center) {
                     Ico(R.drawable.plan_ic_back, 22.dp)
                 }
                 Spacer(Modifier.width(12.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(title, color = C.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(title, color = C.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 if (sub != null) Text(sub, color = C.Text2, fontSize = 13.sp, maxLines = 1)
             }
             trailing()
@@ -121,7 +129,7 @@ private fun Page(onBack: (() -> Unit)?, title: String, sub: String? = null, trai
 @Composable
 private fun RoundBtn(icon: Int, desc: String, onClick: () -> Unit) {
     Box(
-        Modifier.size(44.dp).clip(CircleShape).background(C.Card).border(1.dp, C.Hairline, CircleShape).clickable { onClick() }
+        Modifier.size(44.dp).glassSurface(22.dp, elevated = false).clickable { onClick() }
             .semantics { contentDescription = desc },
         contentAlignment = Alignment.Center,
     ) { Ico(icon, 22.dp) }
@@ -129,10 +137,10 @@ private fun RoundBtn(icon: Int, desc: String, onClick: () -> Unit) {
 
 @Composable
 private fun PChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) C.White else C.Raised, tween(180), label = "chipBg")
+    val bg by animateColorAsState(if (selected) C.White else G.TileBase, tween(180), label = "chipBg")
     val fg by animateColorAsState(if (selected) C.Black else C.Text2, tween(180), label = "chipFg")
     Box(
-        modifier.heightIn(min = 44.dp).clip(CircleShape).background(bg).border(1.dp, if (selected) C.White else C.Hairline, CircleShape)
+        modifier.heightIn(min = 44.dp).clip(CircleShape).background(bg).border(1.dp, if (selected) C.White else G.Edge, CircleShape)
             .clickable { onClick() }.padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) { Text(text, color = fg, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
@@ -152,16 +160,18 @@ private fun taskIcon(t: PlanTask): Int = when {
 
 @Composable
 private fun TaskTile(t: PlanTask, size: Int = 40) {
-    Box(Modifier.size(size.dp).clip(RoundedCornerShape(12.dp)).background(C.Raised).border(1.dp, C.Hairline, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-        Ico(taskIcon(t), (size - 18).dp)
-    }
+    GlassTile(taskIcon(t), size.dp)
 }
 
 @Composable
 private fun CheckDot(done: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(if (done) C.White else Color.Transparent, tween(180), label = "check")
     Box(Modifier.size(48.dp).clickable { onClick() }, contentAlignment = Alignment.Center) {
-        Box(Modifier.size(24.dp).clip(CircleShape).background(bg).border(1.5.dp, if (done) C.White else C.Text2, CircleShape), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(24.dp).then(if (done) Modifier.bloom(6.dp, 0.16f) else Modifier).clip(CircleShape).background(bg)
+                .border(1.5.dp, if (done) C.White else Color.White.copy(alpha = 0.42f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
             if (done) Ico(R.drawable.plan_ic_check, 15.dp, C.Black)
         }
     }
@@ -172,6 +182,10 @@ private fun dayConflicts(day: List<PlanTask>) = day.filter { a -> day.any { b ->
 // --------------------------------------------------------------------------------------
 // A18_01 Plan My Day
 // --------------------------------------------------------------------------------------
+private fun fmt24(m: Int) = "%02d:%02d".format((m / 60) % 24, m % 60)
+private fun durLong(m: Int) = when { m < 60 -> "$m min"; m % 60 == 0 -> "${m / 60} h"; else -> "${m / 60} h ${m % 60} min" }
+private fun durShort(m: Int) = when { m < 60 -> "${m}m"; m % 60 == 0 -> "${m / 60}h"; else -> "${m / 60}h ${m % 60}m" }
+
 @Composable
 private fun PlanMain(go: (Screen) -> Unit) {
     val ctx = LocalContext.current
@@ -181,62 +195,84 @@ private fun PlanMain(go: (Screen) -> Unit) {
     val showFree = remember { PlanPrefs.showFree(ctx) }
     val quickHome = remember { PlanPrefs.quickHome(ctx) }
     val conflicts = dayConflicts(all)
+    val overlap = conflicts.size / 2 + conflicts.size % 2
     val planned = all.sumOf { it.dur }
     val pct = (planned * 100 / PLAN_DAY_MINUTES).coerceIn(0, 100)
+    val doneN = all.count { it.done }
     val shown = if (showDone) all else all.filter { !it.done }
     var quick by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        Page(null, "Plan My Day", date.format(DateTimeFormatter.ofPattern("EEEE, d MMM")), trailing = {
-            RoundBtn(R.drawable.plan_ic_calendar, "Calendar") { go(Screen.PlanCalendar) }
-            Spacer(Modifier.width(8.dp))
-            RoundBtn(R.drawable.plan_ic_more, "Plan settings") { go(Screen.PlanSettings) }
-        }, navClear = true) {
-            // date strip
-            Row(Modifier.fillMaxWidth().enter(1), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                (-3..3).map { date.plusDays(it.toLong()) }.forEach { d ->
-                    val sel = d == date
-                    Column(
-                        Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(18.dp)).background(if (sel) C.White else C.Card)
-                            .border(1.dp, if (sel) C.White else C.Hairline, RoundedCornerShape(18.dp)).clickable { PlanState.date = d },
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH), color = if (sel) C.Black else C.Text2, fontSize = 11.sp)
-                        Text("${d.dayOfMonth}", color = if (sel) C.Black else C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Page(null, "Plan My Day", null, navClear = true, header = {
+            Column {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    RoundBtn(R.drawable.plan_ic_calendar, "Calendar") { go(Screen.PlanCalendar) }
+                    Spacer(Modifier.width(8.dp))
+                    RoundBtn(R.drawable.plan_ic_more, "Plan settings") { go(Screen.PlanSettings) }
+                    Spacer(Modifier.weight(1f))
+                    TodayPill(if (date == LocalDate.now()) "Today" else date.format(DateTimeFormatter.ofPattern("d MMM"))) { PlanState.date = LocalDate.now() }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text("Plan My Day", color = C.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text("Structure today. Execute better.", color = C.Text2, fontSize = 13.sp, maxLines = 1)
+            }
+        }) {
+            // week strip: Monday-first week of the selected day, one white active chip
+            GlassCard(Modifier.fillMaxWidth().enter(1), radius = 16.dp, padding = 6.dp) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val weekStart = Weekly7(date)
+                    (0..6).map { weekStart.plusDays(it.toLong()) }.forEach { d ->
+                        val sel = d == date
+                        val chip = RoundedCornerShape(12.dp)
+                        Column(
+                            Modifier.weight(1f).height(48.dp)
+                                .then(if (sel) Modifier.bloom(7.dp, 0.14f, 12.dp) else Modifier)
+                                .clip(chip).background(if (sel) C.White else Color(0xFF050506))
+                                .border(1.dp, if (sel) Color.Transparent else G.Rule, chip)
+                                .clickable { PlanState.date = d },
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH), color = if (sel) C.Black else C.Text2, fontSize = 10.sp)
+                            Text("${d.dayOfMonth}", color = if (sel) C.Black else C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
-            // summary
-            FocusCard(Modifier.fillMaxWidth().enter(2), onClick = { go(Screen.PlanSummary) }) {
+            // summary: ring + planned time + counters. Glow only on the arc and the hero numeral.
+            GlassCard(Modifier.fillMaxWidth().enter(2), onClick = { go(Screen.PlanSummary) }, radius = 18.dp, padding = 14.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ProgressRing(pct / 100f, 64.dp, "$pct%")
-                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                        Text("${fmtD(planned)} / 14h planned", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${all.count { it.done }} completed · ${all.count { !it.done }} remaining · ${conflicts.size / 2 + conflicts.size % 2} overlap", color = C.Text2, fontSize = 12.sp)
+                    PlanRing(pct, 76.dp)
+                    Column(Modifier.weight(1f).padding(start = 18.dp)) {
+                        Text("Today's plan", color = C.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            GlowText(AnnotatedString(fmtD(planned)), fontSize = 28.sp)
+                            Text("/14h", color = C.Text2, fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp, bottom = 4.dp))
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            PlanStat(R.drawable.plan_ic_check_circle, doneN, "Completed")
+                            PlanStat(R.drawable.plan_ic_timer, all.size - doneN, "Remaining")
+                            PlanStat(R.drawable.plan_ic_warning, overlap, "Overlap", red = overlap > 0)
+                        }
                     }
-                    Ico(R.drawable.plan_ic_chevron_right, 20.dp, C.Text2)
                 }
             }
-            SegFull(listOf("Timeline", "Subjects"), 0) { if (it == 1) go(Screen.PlanSubjects) }
-            if (shown.isEmpty()) Text("Nothing planned for this day. Tap + to add a task.", color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(vertical = 12.dp))
-            shown.forEachIndexed { i, t ->
-                if (showFree && i > 0 && t.start - shown[i - 1].end >= 30) {
-                    Text("Free · ${fmtD(t.start - shown[i - 1].end)}", color = C.Text3, fontSize = 12.sp, modifier = Modifier.padding(start = 76.dp))
-                }
-                FocusCard(Modifier.fillMaxWidth().enter(3 + i), onClick = { PlanState.selectedId = t.id; go(Screen.PlanDetail) }, radius = 20.dp, padding = 10.dp) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.width(62.dp)) {
-                            Text(fmtT(t.start).substringBefore(" "), color = if (t.done) C.Text3 else C.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text(fmtT(t.start).substringAfter(" "), color = C.Text3, fontSize = 11.sp)
+            GlassSeg(listOf("Timeline", "Subjects"), 0) { if (it == 1) go(Screen.PlanSubjects) }
+            // one card, continuous rail, hairline-separated compact rows
+            GlassCard(Modifier.fillMaxWidth().enter(3), radius = 16.dp, padding = 0.dp) {
+                if (shown.isEmpty()) Text("Nothing planned for this day. Tap + to add a task.", color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(16.dp))
+                shown.forEachIndexed { i, t ->
+                    if (showFree && i > 0 && t.start - shown[i - 1].end >= 30) {
+                        Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RailCell(first = false, last = false, node = false, done = false)
+                            Text("Free · ${fmtD(t.start - shown[i - 1].end)}", color = C.Text3, fontSize = 11.sp, modifier = Modifier.padding(start = 54.dp))
                         }
-                        TaskTile(t)
-                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                            Text(t.title, color = if (t.done) C.Text3 else C.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                            Text("${fmtD(t.dur)} · ${t.subject}", color = C.Text2, fontSize = 12.sp, maxLines = 1)
-                        }
-                        if (t.id in conflicts) Ico(R.drawable.plan_ic_warning, 20.dp, C.White)
-                        CheckDot(t.done) { PlanState.upsert(ctx, t.copy(done = !t.done)) }
                     }
+                    TimelineRow(
+                        t, first = i == 0, last = i == shown.lastIndex, conflict = t.id in conflicts,
+                        onOpen = { PlanState.selectedId = t.id; go(Screen.PlanDetail) },
+                        onToggle = { PlanState.upsert(ctx, t.copy(done = !t.done)) },
+                    )
                 }
             }
             GhostButton("Reorder tasks", icon = R.drawable.plan_ic_reorder) { go(Screen.PlanReorder) }
@@ -253,17 +289,77 @@ private fun PlanMain(go: (Screen) -> Unit) {
 }
 
 @Composable
-private fun ProgressRing(frac: Float, size: androidx.compose.ui.unit.Dp, label: String) {
-    val f by animateFloatAsState(frac, tween(650), label = "ring")
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val w = 6.dp.toPx()
-            val sz = Size(this.size.width - w, this.size.height - w)
-            drawArc(C.Track, 0f, 360f, false, Offset(w / 2, w / 2), sz, style = Stroke(w))
-            drawArc(Color.White, -90f, 360f * f, false, Offset(w / 2, w / 2), sz, style = Stroke(w, cap = StrokeCap.Round))
-        }
-        Text(label, color = C.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+private fun TodayPill(label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.height(40.dp).glassSurface(20.dp, elevated = false).clickable { onClick() }.padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Ico(R.drawable.plan_ic_clock, 18.dp)
+        Text(label, color = C.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 8.dp))
     }
+}
+
+@Composable
+private fun PlanStat(icon: Int, value: Int, label: String, red: Boolean = false) {
+    val tint = if (red) G.Red else C.Text2
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Ico(icon, 14.dp, tint)
+            Text("$value", color = if (red) G.Red else C.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp))
+        }
+        Text(label, color = tint, fontSize = 10.sp)
+    }
+}
+
+/** Left rail cell: continuous 1 dp line with an optional small round node centred on the row. */
+@Composable
+private fun RailCell(first: Boolean, last: Boolean, node: Boolean, done: Boolean) {
+    Box(
+        Modifier.width(28.dp).fillMaxHeight().drawBehind {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            drawLine(Color.White.copy(alpha = 0.22f), Offset(cx, if (first) cy else 0f), Offset(cx, if (last) cy else size.height), 1.dp.toPx())
+            if (node) {
+                if (done) drawCircle(Color.White.copy(alpha = 0.10f), 9.dp.toPx(), Offset(cx, cy))
+                drawCircle(Color.Black, 6.dp.toPx(), Offset(cx, cy))
+                drawCircle(if (done) Color.White else Color.White.copy(alpha = 0.55f), 4.5.dp.toPx(), Offset(cx, cy))
+            }
+        },
+    )
+}
+
+@Composable
+private fun TimelineRow(t: PlanTask, first: Boolean, last: Boolean, conflict: Boolean, onOpen: () -> Unit, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(52.dp)
+            .drawBehind {
+                if (!last) drawLine(G.Rule, Offset(28.dp.toPx(), size.height - 0.5f), Offset(size.width - 12.dp.toPx(), size.height - 0.5f), 1.dp.toPx())
+            }
+            .clickable { onOpen() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RailCell(first, last, node = true, done = t.done)
+        Column(Modifier.width(54.dp)) {
+            Text(fmt24(t.start), color = C.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(durShort(t.dur), color = C.Text3, fontSize = 10.sp)
+        }
+        Ico(taskIcon(t), 22.dp)
+        Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+            Text(t.title, color = C.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text("${durLong(t.dur)} · ${t.subject}", color = C.Text2, fontSize = 11.sp, maxLines = 1)
+        }
+        if (conflict) Ico(R.drawable.plan_ic_warning, 18.dp, G.Red)
+        CheckDot(t.done, onToggle)
+    }
+}
+
+@Composable
+private fun PlanRing(pct: Int, size: Dp, labelSize: TextUnit = 20.sp) {
+    val f by animateFloatAsState(pct / 100f, tween(650), label = "ring")
+    GlowRing(
+        f, size, buildAnnotatedString { append("$pct"); withStyle(SpanStyle(fontSize = labelSize * 0.6f)) { append("%") } },
+        labelSize, strokeDp = (size.value * 0.08f).dp,
+    )
 }
 
 // --------------------------------------------------------------------------------------
@@ -276,8 +372,8 @@ private fun PlanSubjects(go: (Screen) -> Unit, back: () -> Unit) {
     val total = day.sumOf { it.dur }.coerceAtLeast(1)
     var picked by remember { mutableStateOf<String?>(null) }
     Page(back, "Subjects", PlanState.date.format(DateTimeFormatter.ofPattern("EEE, d MMM"))) {
-        SegFull(listOf("Timeline", "Subjects"), 1) { if (it == 0) back() }
-        FocusCard(Modifier.fillMaxWidth().enter(1)) {
+        GlassSeg(listOf("Timeline", "Subjects"), 1) { if (it == 0) back() }
+        GlassCard(Modifier.fillMaxWidth().enter(1)) {
             Caps("Time distribution")
             Spacer(Modifier.height(10.dp))
             Canvas(Modifier.fillMaxWidth().height(14.dp).clip(CircleShape)) {
@@ -291,7 +387,7 @@ private fun PlanSubjects(go: (Screen) -> Unit, back: () -> Unit) {
         }
         groups.forEachIndexed { i, (name, ts) ->
             val mins = ts.sumOf { it.dur }
-            FocusCard(
+            GlassCard(
                 Modifier.fillMaxWidth().enter(2 + i), onClick = { picked = if (picked == name) null else name }, radius = 20.dp,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -303,7 +399,7 @@ private fun PlanSubjects(go: (Screen) -> Unit, back: () -> Unit) {
                     Text("${mins * 100 / total}%", color = C.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
                 Spacer(Modifier.height(10.dp))
-                ProgBar(mins / total.toFloat(), height = 5.dp)
+                GlowBar(mins / total.toFloat(), height = 5.dp)
                 if (picked == name) ts.forEach { t ->
                     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { PlanState.selectedId = t.id; go(Screen.PlanDetail) }, verticalAlignment = Alignment.CenterVertically) {
                         Text(fmtT(t.start), color = C.Text2, fontSize = 12.sp, modifier = Modifier.width(76.dp))
@@ -346,7 +442,7 @@ private fun PlanForm(editId: String?, back: () -> Unit) {
     fun commit(t: PlanTask) { PlanState.upsert(ctx, t); back() }
 
     Page(back, if (editing == null) "Add New Task" else "Edit Task", PlanState.date.format(DateTimeFormatter.ofPattern("EEE, d MMM"))) {
-        FocusCard(Modifier.fillMaxWidth().enter(1)) {
+        GlassCard(Modifier.fillMaxWidth().enter(1)) {
             Caps("Task type"); Spacer(Modifier.height(8.dp))
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PLAN_CATEGORIES.forEach { c -> PChip(c, c == cat) { cat = c } }
@@ -362,13 +458,13 @@ private fun PlanForm(editId: String?, back: () -> Unit) {
             )
             if (tried && name.isBlank()) Text("Give the task a name.", color = C.Text2, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, start = 4.dp))
         }
-        FocusCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
+        GlassCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
             FormRow("Start time", fmtT(start)) { sheet = "start" }
             Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(1.dp).background(C.Hairline))
             FormRow("Duration", fmtD(dur)) { sheet = "dur" }
         }
         if (!fits) Text("This runs past midnight. Shorten it or start earlier.", color = C.Text2, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
-        FocusCard(Modifier.fillMaxWidth().enter(3)) {
+        GlassCard(Modifier.fillMaxWidth().enter(3)) {
             Caps("Priority"); Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { PLAN_PRIORITIES.forEachIndexed { i, p -> PChip(p, i == pr, Modifier.weight(1f)) { pr = i } } }
             Spacer(Modifier.height(14.dp))
@@ -377,9 +473,9 @@ private fun PlanForm(editId: String?, back: () -> Unit) {
                 shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(), minLines = 2, colors = fieldColors(),
             )
         }
-        PrimaryButton(if (editing == null) "Add Task" else "Save Changes", enabled = true) {
+        GlassPrimaryButton(if (editing == null) "Add Task" else "Save Changes", enabled = true) {
             tried = true
-            if (!valid) return@PrimaryButton
+            if (!valid) return@GlassPrimaryButton
             val t = build()
             val hit = PlanState.forDate(LocalDate.parse(t.date)).firstOrNull { t.overlaps(it) }
             if (hit != null) conflict = hit else commit(t)
@@ -402,7 +498,7 @@ private fun PlanForm(editId: String?, back: () -> Unit) {
                 start = (hit.end).coerceAtMost(24 * 60 - dur).coerceAtLeast(0); conflict = null; sheet = "start"
             }
             Spacer(Modifier.height(8.dp))
-            PrimaryButton("Keep anyway") { conflict = null; commit(t) }
+            GlassPrimaryButton("Keep anyway") { conflict = null; commit(t) }
         }
     }
     if (confirmDelete && editing != null) AlertDialog(
@@ -495,7 +591,7 @@ private fun PlanDetail(go: (Screen) -> Unit, back: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
     val doneCount = t.checklist.count { it.second }
     Page(back, t.title, "${fmtT(t.start)} – ${fmtT(t.end)}", trailing = { RoundBtn(R.drawable.plan_ic_pencil, "Edit task") { go(Screen.PlanEdit) } }) {
-        FocusCard(Modifier.fillMaxWidth().enter(1)) {
+        GlassCard(Modifier.fillMaxWidth().enter(1)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TaskTile(t, 52)
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
@@ -505,13 +601,13 @@ private fun PlanDetail(go: (Screen) -> Unit, back: () -> Unit) {
             }
             if (t.notes.isNotBlank()) { Spacer(Modifier.height(12.dp)); Caps("Notes"); Spacer(Modifier.height(4.dp)); Text(t.notes, color = C.Text2, fontSize = 14.sp, lineHeight = 20.sp) }
         }
-        if (t.checklist.isNotEmpty()) FocusCard(Modifier.fillMaxWidth().enter(2), padding = 12.dp) {
+        if (t.checklist.isNotEmpty()) GlassCard(Modifier.fillMaxWidth().enter(2), padding = 12.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Checklist", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text("$doneCount/${t.checklist.size}", color = C.Text2, fontSize = 13.sp)
             }
             Spacer(Modifier.height(8.dp))
-            ProgBar(doneCount / t.checklist.size.toFloat(), height = 5.dp)
+            GlowBar(doneCount / t.checklist.size.toFloat(), height = 5.dp)
             t.checklist.forEachIndexed { i, (label, d) ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable {
                     PlanState.upsert(ctx, t.copy(checklist = t.checklist.mapIndexed { j, c -> if (j == i) c.first to !c.second else c }))
@@ -527,7 +623,7 @@ private fun PlanDetail(go: (Screen) -> Unit, back: () -> Unit) {
             val st = Store.get(ctx); val fm = st.int("tfocus_${t.id}"); val q = st.int("tq_${t.id}")
             if (fm > 0 || q > 0) Text("Linked: ${fm} min focused · $q questions logged", color = C.Text2, fontSize = 13.sp)
         }
-        PrimaryButton("Start Focus") { go(Screen.PlanFocus) }
+        GlassPrimaryButton("Start Focus") { go(Screen.PlanFocus) }
         GhostButton(if (t.done) "Mark as not done" else "Mark as Done") { PlanState.upsert(ctx, t.copy(done = !t.done)); back() }
         GhostButton("Delete Task") { confirm = true }
     }
@@ -551,8 +647,8 @@ private fun PlanCalendar(go: (Screen) -> Unit, back: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         Page(back, "Calendar", month.format(DateTimeFormatter.ofPattern("MMMM yyyy"))) {
-            SegFull(listOf("Day", "Week", "Month"), tab) { tab = it }
-            if (tab == 2) FocusCard(Modifier.fillMaxWidth().enter(1), padding = 12.dp) {
+            GlassSeg(listOf("Day", "Week", "Month"), tab) { tab = it }
+            if (tab == 2) GlassCard(Modifier.fillMaxWidth().enter(1), padding = 12.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(44.dp).clickable { month = month.minusMonths(1) }, contentAlignment = Alignment.Center) { Ico(R.drawable.plan_ic_back, 20.dp) }
                     Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy")), color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
@@ -581,7 +677,7 @@ private fun PlanCalendar(go: (Screen) -> Unit, back: () -> Unit) {
                 val ts = PlanState.forDate(d)
                 if (ts.isEmpty()) Text("No events.", color = C.Text3, fontSize = 13.sp, modifier = Modifier.padding(start = 4.dp))
                 ts.forEach { t ->
-                    FocusCard(Modifier.fillMaxWidth(), onClick = { PlanState.selectedId = t.id; go(Screen.PlanDetail) }, radius = 18.dp, padding = 10.dp) {
+                    GlassCard(Modifier.fillMaxWidth(), onClick = { PlanState.selectedId = t.id; go(Screen.PlanDetail) }, radius = 18.dp, padding = 10.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("${fmtT(t.start)}\n${fmtT(t.end)}", color = C.Text2, fontSize = 11.sp, lineHeight = 14.sp, modifier = Modifier.width(76.dp))
                             Box(Modifier.width(3.dp).height(32.dp).clip(CircleShape).background(C.White.copy(alpha = if (t.done) 0.3f else 0.9f)))
@@ -611,7 +707,7 @@ private fun PlanFocus(go: (Screen) -> Unit, back: () -> Unit) {
     if (t == null) { LaunchedEffect(Unit) { back() }; return }
     var strict by remember { mutableStateOf(store.strictLock) }
     Page(back, "Focus", "Start a session from your plan") {
-        FocusCard(Modifier.fillMaxWidth().enter(1)) {
+        GlassCard(Modifier.fillMaxWidth().enter(1)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TaskTile(t, 52)
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
@@ -622,7 +718,7 @@ private fun PlanFocus(go: (Screen) -> Unit, back: () -> Unit) {
                 RoundBtn(R.drawable.plan_ic_pencil, "Edit task") { go(Screen.PlanEdit) }
             }
         }
-        FocusCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
+        GlassCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
             FormRow("Allowed apps", "${store.allowedApps.size} apps") { go(Screen.Apps) }
             Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(1.dp).background(C.Hairline))
             FormRow("Allowed callers", "${store.callers.size} contacts") { go(Screen.Callers) }
@@ -633,7 +729,7 @@ private fun PlanFocus(go: (Screen) -> Unit, back: () -> Unit) {
             }
         }
         // the existing session controller needs a subject it knows; Personal maps to Other
-        PrimaryButton(if (AppState.coreReady) "Start Focus" else "Finish setup to begin") {
+        GlassPrimaryButton(if (AppState.coreReady) "Start Focus" else "Finish setup to begin") {
             if (!AppState.coreReady) go(Screen.Setup)
             else SessionController.start(ctx, t.dur, t.title, if (t.subject == "Personal") "Other" else t.subject, t.id)
         }
@@ -652,9 +748,9 @@ private fun PlanSummary(back: () -> Unit) {
     val workout = day.filter { it.done && it.category == "Workout" }.sumOf { it.dur }
     val doneN = day.count { it.done }
     Page(back, "Daily Summary", PlanState.date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy"))) {
-        FocusCard(Modifier.fillMaxWidth().enter(1)) {
+        GlassCard(Modifier.fillMaxWidth().enter(1)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ProgressRing(pct / 100f, 96.dp, "$pct%")
+                PlanRing(pct, 96.dp, 24.sp)
                 Column(Modifier.padding(start = 16.dp)) {
                     Text("${fmtD(planned)} / 14h", color = C.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Text("planned today", color = C.Text2, fontSize = 13.sp)
@@ -668,13 +764,13 @@ private fun PlanSummary(back: () -> Unit) {
             Triple("Workout time", fmtD(workout), workout / 120f),
             Triple("Tasks completed", "$doneN / ${day.size}", if (day.isEmpty()) 0f else doneN / day.size.toFloat()),
         ).forEachIndexed { i, (label, value, f) ->
-            FocusCard(Modifier.fillMaxWidth().enter(2 + i), radius = 20.dp) {
+            GlassCard(Modifier.fillMaxWidth().enter(2 + i), radius = 20.dp) {
                 Row { Text(label, color = C.Text2, fontSize = 14.sp, modifier = Modifier.weight(1f)); Text(value, color = C.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
                 Spacer(Modifier.height(10.dp))
-                ProgBar(f, height = 6.dp)
+                GlowBar(f, height = 6.dp)
             }
         }
-        PrimaryButton("View Agenda") { back() }
+        GlassPrimaryButton("View Agenda") { back() }
     }
 }
 
@@ -708,17 +804,17 @@ private fun PlanSettings(back: () -> Unit) {
         }
     }
     Page(back, "Plan Settings", "How your agenda looks and behaves") {
-        FocusCard(Modifier.fillMaxWidth().enter(1), padding = 6.dp) {
+        GlassCard(Modifier.fillMaxWidth().enter(1), padding = 6.dp) {
             Sw("Show completed tasks", null, showDone) { showDone = it; st.putBool("plan_show_done", it) }
             Sw("Show free time slots", null, showFree) { showFree = it; st.putBool("plan_show_free", it) }
             Sw("Quick add on home", "Plus button on Plan My Day", quick) { quick = it; st.putBool("plan_quick_home", it) }
         }
-        FocusCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
+        GlassCard(Modifier.fillMaxWidth().enter(2), padding = 6.dp) {
             FormRow("Default start time", fmtT(defStart)) { sheet = "start" }
             FormRow("Default duration", fmtD(defDur)) { sheet = "dur" }
             FormRow("Reminder before task", if (remind == 0) "Off" else "$remind minutes") { sheet = "remind" }
         }
-        FocusCard(Modifier.fillMaxWidth().enter(3), padding = 6.dp) {
+        GlassCard(Modifier.fillMaxWidth().enter(3), padding = 6.dp) {
             // Stored only: calendar sync and smart suggestions are not wired to anything yet.
             Sw("Sync with calendar", "Saved. Calendar access is not connected yet.", sync) { sync = it; st.putBool("plan_sync", it) }
             Sw("Smart suggestions", "Saved. Suggestions are not generated yet.", smart) { smart = it; st.putBool("plan_smart", it) }
@@ -756,7 +852,7 @@ private fun QuickAddSheet(date: LocalDate, onDismiss: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(15, 30, 45, 60, 90).forEach { d -> PChip(if (d >= 60) fmtD(d).replace(" 0m", "") else "$d min", d == dur, Modifier.weight(1f)) { dur = d } } }
         Spacer(Modifier.height(14.dp))
-        PrimaryButton("Add Task", enabled = name.isNotBlank() && start + dur <= 24 * 60) {
+        GlassPrimaryButton("Add Task", enabled = name.isNotBlank() && start + dur <= 24 * 60) {
             PlanState.upsert(ctx, PlanTask(PlanState.newId(), date.toString(), name.trim(), cat, if (cat == "Study") "Physics" else cat, start, dur))
             onDismiss()
         }

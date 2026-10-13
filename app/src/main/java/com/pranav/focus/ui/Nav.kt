@@ -16,13 +16,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,16 +64,18 @@ fun TabBar(current: Screen, onSelect: (Screen) -> Unit) {
     LazyRow(
         state = state,
         modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 8.dp).fillMaxWidth().height(64.dp)
-            .clip(CircleShape).background(C.Raised.copy(alpha = 0.94f)).border(1.dp, C.Hairline, CircleShape),
+            .glassSurface(radius = 20.dp, base = Color(0xF0070708)),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 5.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         itemsIndexed(NAV_ITEMS) { _, item ->
             val sel = item.screen == current
-            val bg = animateColorAsState(if (sel) C.White else androidx.compose.ui.graphics.Color.Transparent, tween(260), label = "navBg").value
+            val bg = animateColorAsState(if (sel) C.White else Color.Transparent, tween(260), label = "navBg").value
             val fg = animateColorAsState(if (sel) C.Black else C.Text2, tween(260), label = "navFg").value
             Column(
-                Modifier.width(itemW).fillMaxHeight().clip(CircleShape).background(bg).clickable { onSelect(item.screen) },
+                Modifier.width(itemW).fillMaxHeight()
+                    .then(if (sel) Modifier.bloom(8.dp, 0.14f, 15.dp) else Modifier)
+                    .clip(RoundedCornerShape(15.dp)).background(bg).clickable { onSelect(item.screen) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
