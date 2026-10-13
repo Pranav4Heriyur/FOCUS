@@ -337,24 +337,46 @@ fun TimeBankScreen(back: () -> Unit, onRules: () -> Unit, onFocus: () -> Unit) {
     var help by remember { mutableStateOf(false) }
     val day = remember(tick, bump) { store.day() }
     val bank = remember(tick, bump) { store.bankMinutes }
-    val left = remember(tick) {
-        val d = Duration.between(LocalDateTime.now(), LocalDateTime.now().toLocalDate().plusDays(1).atStartOfDay())
-        "${d.toHours()}h ${d.toMinutes() % 60}m"
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1000); now = LocalDateTime.now() } }
+    val left = run {
+        val d = Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay())
+        "%02d:%02d:%02d".format(d.toHours(), d.toMinutes() % 60, d.seconds % 60)
     }
     val locked = remember(tick, bump) { store.appRules.filter { it.locked } }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         ScreenHeader("Time Bank", back, "Earn it. Then spend it.")
         FocusCard(Modifier.fillMaxWidth()) {
-            Caps("Available now")
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text("$bank", color = C.White, fontSize = 56.sp, lineHeight = 60.sp, fontWeight = FontWeight.Bold)
-                Text(" min", color = C.Text2, fontSize = 20.sp, modifier = Modifier.padding(bottom = 10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Caps("Available now")
+                    val shown by androidx.compose.animation.core.animateFloatAsState(bank.toFloat(), androidx.compose.animation.core.tween(450), label = "bank")
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text("${shown.toInt()}", color = C.White, fontSize = 56.sp, lineHeight = 60.sp, fontWeight = FontWeight.Bold)
+                        Text(" min", color = C.Text2, fontSize = 20.sp, modifier = Modifier.padding(bottom = 10.dp))
+                    }
+                }
+                androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_stack), null, Modifier.size(width = 112.dp, height = 133.dp))
             }
+            Spacer(Modifier.height(10.dp))
+            val tot = (day.earnedTotal + 0.0001f).coerceAtLeast(1f)
+            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(C.Track)) {
+                Box(Modifier.fillMaxWidth((1f - day.fromPool / tot).coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(C.White))
+            }
+            Spacer(Modifier.height(8.dp))
             Text("Earned today ${day.earnedTotal}m · Spent ${day.fromPool}m" + if (day.penalty > 0) " · Penalty −${day.penalty}m" else "",
                 color = C.Text2, fontSize = 13.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("Resets at midnight · $left left", color = C.Text3, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(12.dp))
+        FocusCard(Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Resets at midnight", color = C.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Unused minutes expire", color = C.Text2, fontSize = 13.sp)
+                }
+                Text(left, color = C.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
         Spacer(Modifier.height(20.dp))
         Text("Locked apps", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

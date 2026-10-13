@@ -40,6 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -276,9 +280,23 @@ fun AppsScreen(back: () -> Unit) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         ScreenHeader("Allowed apps", back, "Phone is always allowed. Everything else is locked during a session unless switched on here.")
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
+        var q by remember { mutableStateOf("") }
+        val sel = apps.filter { it.pkg in selected }
+        if (sel.isNotEmpty()) {
+            Caps("Allowed · ${sel.size}")
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(sel, key = { it.pkg }) { a -> AppIcon(a.pkg, 52.dp) }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search apps") }, colors = fieldColors(), shape = RoundedCornerShape(16.dp))
+        Spacer(Modifier.height(10.dp))
+        Caps("Select apps")
+        Spacer(Modifier.height(4.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(apps, key = { it.pkg }) { app ->
+            items(apps.filter { q.isBlank() || it.label.contains(q, true) }, key = { it.pkg }) { app ->
                 val icon = remember(app.pkg) { runCatching { ctx.packageManager.getApplicationIcon(app.pkg).toBitmap(80, 80).asImageBitmap() }.getOrNull() }
                 val on = app.pkg in selected
                 Row(
@@ -310,7 +328,31 @@ fun SetupScreen(back: (() -> Unit)?, requestNotif: () -> Unit, requestRole: () -
     val usageOk = remember(AppState.tick) { UsageHelper.hasAccess(ctx) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        ScreenHeader("Permissions", back, "Focus needs these to lock your phone properly.")
+        if (back != null) ScreenHeader("Permissions", back)
+        val granted = listOf(AppState.a11yOn, AppState.overlayOn, AppState.notifOn, AppState.callRoleOn, AppState.batteryOk).count { it }
+        val frac by animateFloatAsState(granted / 5f, tween(450), label = "perm")
+        Box(Modifier.fillMaxWidth().height(142.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.size(132.dp)) {
+                val w = 2.dp.toPx()
+                drawCircle(Color.White.copy(alpha = .10f), size.minDimension / 2 - w, style = androidx.compose.ui.graphics.drawscope.Stroke(w))
+                drawArc(Color.White, -90f, 360f * frac, false, topLeft = Offset(w, w), size = Size(size.width - 2 * w, size.height - 2 * w),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+            Image(painterResource(R.drawable.art_lock), null, Modifier.size(width = 84.dp, height = 86.dp))
+        }
+        Text("Set up Focus", color = C.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text("Grant these so Focus can lock your phone properly.", color = C.Text2, fontSize = 14.sp, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("$granted of 5 granted", color = C.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            Text("${granted * 20}%", color = C.Text2, fontSize = 13.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(C.Track)) {
+            Box(Modifier.fillMaxWidth(frac).height(4.dp).clip(CircleShape).background(C.White))
+        }
+        Spacer(Modifier.height(18.dp))
         SetupRow(R.drawable.ic_lock, "1. Accessibility service", "Required. Lets Focus see which app is on screen and send you back. Find “Focus lock” and turn it on.", AppState.a11yOn) {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }

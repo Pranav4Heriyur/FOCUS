@@ -267,7 +267,7 @@ fun CallersScreen(back: () -> Unit) {
             Text("$blocked blocked this week", color = C.Text3, fontSize = 12.sp)
         }
         Spacer(Modifier.height(12.dp))
-        if (list.size > 4) {
+        if (true) {
             OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search") }, colors = fieldColors(), shape = RoundedCornerShape(16.dp))
             Spacer(Modifier.height(8.dp))
         }
