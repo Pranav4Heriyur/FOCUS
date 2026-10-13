@@ -118,11 +118,7 @@ fun MirrorScreen(back: () -> Unit) {
     LaunchedEffect(missed) { pulse.snapTo(0.35f); pulse.animateTo(0f, tween(260)) }
 
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.align(Alignment.TopEnd).size(190.dp).offset(x = 40.dp, y = 10.dp)) {
-            val c = Offset(size.width * 0.62f, size.height * 0.42f)
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF5A5A5E), Color(0xFF1A1A1C), Color(0xFF050505)), c - Offset(30f, 40f), size.width * 0.5f), size.width * 0.34f, c)
-            drawCircle(Color.White.copy(alpha = 0.10f), size.width * 0.34f, c, style = Stroke(1.dp.toPx()))
-        }
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_moon), null, Modifier.align(Alignment.TopEnd).offset(y = 60.dp).size(width = 149.dp, height = 154.dp))
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 28.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 BackCircle(back); Spacer(Modifier.weight(1f)); Text("9:00 PM", color = C.Text2, fontSize = 11.sp, letterSpacing = 1.5.sp)
@@ -244,7 +240,7 @@ fun JarScreen(back: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("Remember this when you want to quit.", color = C.Text2, fontSize = 13.sp)
             }
-            JarArt(Modifier.size(width = 92.dp, height = 112.dp))
+            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_jar), null, Modifier.size(width = 120.dp, height = 133.dp))
         }
         Spacer(Modifier.height(16.dp))
         if (items.isEmpty()) Text("Empty. Add your first win.", color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(vertical = 12.dp))
@@ -303,31 +299,6 @@ private fun SheetField(v: String, hint: String, singleLine: Boolean, onChange: (
     }
 }
 
-@Composable
-private fun JarArt(modifier: Modifier) {
-    val s = rememberSweep(1f, 400)
-    Canvas(modifier) {
-        val w = size.width; val h = size.height
-        drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(w * 0.2f, 0f), Size(w * 0.6f, h * 0.12f), androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()), style = Stroke(1.5.dp.toPx()))
-        drawRoundRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.02f))), Offset(w * 0.08f, h * 0.14f), Size(w * 0.84f, h * 0.84f), androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()))
-        drawRoundRect(Color.White.copy(alpha = 0.55f), Offset(w * 0.08f, h * 0.14f), Size(w * 0.84f, h * 0.84f), androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()), style = Stroke(1.5.dp.toPx()))
-        fun star(c: Offset, r: Float, a: Float, fill: Boolean) {
-            val p = Path()
-            for (i in 0 until 10) {
-                val rr = if (i % 2 == 0) r else r * 0.45f
-                val ang = Math.toRadians(-90.0 + i * 36.0)
-                val o = Offset(c.x + (rr * Math.cos(ang)).toFloat(), c.y + (rr * Math.sin(ang)).toFloat())
-                if (i == 0) p.moveTo(o.x, o.y) else p.lineTo(o.x, o.y)
-            }
-            p.close()
-            if (fill) drawPath(p, Color.White.copy(alpha = a)) else drawPath(p, Color.White.copy(alpha = a), style = Stroke(1.5.dp.toPx()))
-        }
-        star(Offset(w * 0.5f, h * 0.45f), w * 0.2f * (0.94f + 0.06f * s), s, false)
-        star(Offset(w * 0.5f, h * 0.45f), w * 0.1f, 0.9f * s, true)
-        listOf(0.26f, 0.42f, 0.58f, 0.74f).forEach { fx -> star(Offset(w * fx, h * 0.84f), w * 0.09f, 0.85f * s, true) }
-    }
-}
-
 // ---------------------------------------------------------------------------------------
 // A13 Rank
 // ---------------------------------------------------------------------------------------
@@ -349,12 +320,7 @@ fun RankScreen(back: () -> Unit) {
     val bar = rememberSweep(Ranks.progress(xp), 1000)
 
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.align(Alignment.TopEnd).size(width = 230.dp, height = 190.dp)) {
-            val p = Path().apply { moveTo(size.width * 0.15f, size.height); lineTo(size.width * 0.5f, size.height * 0.55f); lineTo(size.width * 0.64f, size.height * 0.7f); lineTo(size.width * 0.86f, size.height * 0.3f); lineTo(size.width, size.height * 0.5f); lineTo(size.width, size.height); close() }
-            drawPath(p, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.16f), Color.Transparent)))
-            drawCircle(Color.White.copy(alpha = glowA.value), 46.dp.toPx(), Offset(size.width * 0.72f, size.height * 0.3f))
-            drawCircle(Color.White.copy(alpha = 0.8f), 36.dp.toPx(), Offset(size.width * 0.72f, size.height * 0.3f), style = Stroke(1.5.dp.toPx()))
-        }
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_summit), null, Modifier.align(Alignment.TopEnd).offset(y = 47.dp).size(width = 132.dp, height = 127.dp), alpha = (0.88f + glowA.value).coerceAtMost(1f))
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 28.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) { BackCircle(back); Spacer(Modifier.width(12.dp)); Eyebrow("Your rank") }
             Spacer(Modifier.height(10.dp))
@@ -395,9 +361,15 @@ fun RankScreen(back: () -> Unit) {
                         }
                     }
                 }
-                Column(Modifier.weight(1f).fillMaxHeight().glass(24.dp).padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                    Text("“Discipline today builds a version of you most people will never know.”", color = C.White, fontSize = 17.sp, lineHeight = 23.sp, fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic)
-                    Text("HIGHER STANDARDS. A CALMER YOU.", color = C.Text2, fontSize = 8.sp, letterSpacing = 1.5.sp, lineHeight = 12.sp)
+                Box(Modifier.weight(1f).fillMaxHeight().glass(24.dp)) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_peaks), null, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(119.dp), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    Column(Modifier.padding(14.dp)) {
+                        Text("“Discipline today builds a version of you most people will never know.”", color = C.White, fontSize = 17.sp, lineHeight = 23.sp, fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic)
+                        Spacer(Modifier.height(14.dp))
+                        Box(Modifier.width(24.dp).height(1.dp).background(C.Text2))
+                        Spacer(Modifier.height(12.dp))
+                        Text("HIGHER STANDARDS. A CALMER YOU.", color = C.Text2, fontSize = 8.sp, letterSpacing = 1.5.sp, lineHeight = 12.sp)
+                    }
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -452,16 +424,7 @@ fun SecurityScreen(back: () -> Unit) {
     val autoLabel = listOf("Now", "30 seconds", "5 minutes", "Never")
 
     Box(Modifier.fillMaxSize()) {
-        Canvas(Modifier.align(Alignment.TopEnd).padding(top = 40.dp).size(170.dp)) {
-            val c = Offset(size.width * 0.55f, size.height * 0.5f)
-            drawOval(Color.White.copy(alpha = 0.22f), Offset(0f, size.height * 0.28f), Size(size.width, size.height * 0.42f), style = Stroke(1.dp.toPx()))
-            val sh = Path().apply { moveTo(c.x, size.height * 0.05f); lineTo(size.width * 0.9f, size.height * 0.22f); lineTo(size.width * 0.86f, size.height * 0.62f); lineTo(c.x, size.height * 0.95f); lineTo(size.width * 0.2f, size.height * 0.62f); lineTo(size.width * 0.16f, size.height * 0.22f); close() }
-            drawPath(sh, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.14f), Color.White.copy(alpha = 0.02f))))
-            drawPath(sh, Color.White.copy(alpha = 0.35f), style = Stroke(1.dp.toPx()))
-            drawRoundRect(Color.White.copy(alpha = 0.9f), Offset(c.x - 20.dp.toPx(), c.y - 4.dp.toPx()), Size(40.dp.toPx(), 32.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()), style = Stroke(2.dp.toPx()))
-            drawArc(Color.White.copy(alpha = 0.9f), 180f, 180f, false, Offset(c.x - 12.dp.toPx(), c.y - 26.dp.toPx()), Size(24.dp.toPx(), 40.dp.toPx()), style = Stroke(2.dp.toPx()))
-            drawCircle(Color.White, 3.dp.toPx(), Offset(c.x, c.y + 12.dp.toPx()))
-        }
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.art_shield), null, Modifier.align(Alignment.TopEnd).offset(y = 71.dp).size(width = 172.dp, height = 175.dp))
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 28.dp)) {
             BackCircle(back)
             Spacer(Modifier.height(22.dp))
