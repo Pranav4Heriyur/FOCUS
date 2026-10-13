@@ -193,7 +193,7 @@ fun MirrorScreen(back: () -> Unit) {
             val d = store.day(tomorrow)
             d.penalty += missed * Rewards.MISSED_ITEM_PENALTY_MIN
             store.saveDay(d, tomorrow)
-            store.xp += (tasks.size - missed) * Rewards.REVIEW_ITEM_XP
+            store.awardXp("review:${today}", "review", (tasks.size - missed) * Rewards.REVIEW_ITEM_XP)
             if (avoided.isNotBlank()) store.avoided = listOf(Entry(UUID.randomUUID().toString(), System.currentTimeMillis(), avoided.trim(), "")) + store.avoided
             store.putReviewSubmitted(); submitted = true; confirm = false
             AppState.dataTick++

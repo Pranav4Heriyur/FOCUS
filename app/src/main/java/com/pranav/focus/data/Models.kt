@@ -11,7 +11,7 @@ enum class Cond(val title: String, val sub: String, val unit: String, val source
     STUDY("Study questions", "Answer questions with accuracy", "questions", "Study"),
 }
 
-data class AppRule(val pkg: String, val locked: Boolean = true, val limitMin: Int = 30)
+data class AppRule(val pkg: String, val locked: Boolean = true, val limitMin: Int = 30, val baseMin: Int = 0)
 
 data class UnlockRule(val id: String, val cond: Cond, val target: Int, val pkg: String, val minutes: Int) {
     fun title(): String = when (cond) {
@@ -69,8 +69,8 @@ data class AgendaItem(val id: String, val title: String, val sub: String, val ic
 data class Caller(val name: String, val number: String, val enabled: Boolean = true)
 
 object Codec {
-    fun appRules(l: List<AppRule>): String = JSONArray(l.map { JSONObject().put("pkg", it.pkg).put("locked", it.locked).put("limit", it.limitMin) }).toString()
-    fun appRules(s: String?): List<AppRule> = arr(s) { AppRule(it.getString("pkg"), it.optBoolean("locked", true), it.optInt("limit", 30)) }
+    fun appRules(l: List<AppRule>): String = JSONArray(l.map { JSONObject().put("pkg", it.pkg).put("locked", it.locked).put("limit", it.limitMin).put("base", it.baseMin) }).toString()
+    fun appRules(s: String?): List<AppRule> = arr(s) { AppRule(it.getString("pkg"), it.optBoolean("locked", true), it.optInt("limit", 30), it.optInt("base", 0)) }
 
     fun unlockRules(l: List<UnlockRule>): String = JSONArray(l.map {
         JSONObject().put("id", it.id).put("cond", it.cond.name).put("target", it.target).put("pkg", it.pkg).put("min", it.minutes)

@@ -220,6 +220,8 @@ fun StatsScreen(go: (com.pranav.focus.ui.Screen) -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
+        UsageTotalsCard()
+        Spacer(Modifier.height(12.dp))
         FocusCard(Modifier.fillMaxWidth()) {
             Row { Text("Focus streak", color = C.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text("${store.streak} days", color = C.Text2, fontSize = 14.sp) }

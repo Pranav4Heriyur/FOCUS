@@ -7,14 +7,16 @@ import android.database.sqlite.SQLiteOpenHelper
 import java.time.LocalDate
 
 /** Study data lives in its own SQLite file (framework API, no extra dependency). */
-class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "study.db", null, 2) {
+class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "study.db", null, 3) {
     private val prefs = ctx.applicationContext.getSharedPreferences("study_prefs", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE chapter(id INTEGER PRIMARY KEY, subject INT, name TEXT, unit_order INT, grp TEXT DEFAULT '', active INT DEFAULT 1)")
         db.execSQL("CREATE TABLE book(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, active INT DEFAULT 1)")
         StudySeed.BOOKS.forEach { b -> db.insert("book", null, ContentValues().apply { put("name", b) }) }
-        db.execSQL("CREATE TABLE question_log(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INT, subject INT, chapter_id INT, source INT, correct INT, wrong INT, skipped INT, minutes INT, verified INT, book_id INT DEFAULT 0)")
+        db.execSQL("CREATE TABLE question_log(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INT, subject INT, chapter_id INT, source INT, correct INT, wrong INT, skipped INT, minutes INT, verified INT, book_id INT DEFAULT 0, agenda_task_id TEXT, focus_session_id TEXT)")
+        db.execSQL("CREATE INDEX idx_qlog_task ON question_log(agenda_task_id)")
+        db.execSQL("CREATE INDEX idx_qlog_session ON question_log(focus_session_id)")
         db.execSQL("CREATE TABLE mock_test(id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, name TEXT, p_c INT,p_w INT,p_s INT, c_c INT,c_w INT,c_s INT, b_c INT,b_w INT,b_s INT, target INT)")
         db.execSQL("CREATE TABLE mistake(id INTEGER PRIMARY KEY AUTOINCREMENT, subject INT, chapter_id INT, ref TEXT, type INT, note TEXT, due TEXT, done_count INT)")
         var i = 0
@@ -36,12 +38,21 @@ class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
                 while (it.moveToNext()) db.execSQL("UPDATE chapter SET grp = ? WHERE id = ?", arrayOf(StudySeed.groupOf(Subject.values()[it.getInt(1)], it.getString(2)), it.getInt(0)))
             }
         }
+        if (o < 3) migrateToV3(db)
     }
 
+    /**
+     * v3: nullable links from a log to the agenda task / focus session it came from. Existing rows stay NULL (no guessed backfill).
+     * Foreign keys are intentionally NOT declared: agenda tasks live in SharedPreferences and focus sessions have no table,
+     * so there is no parent row to reference. Dangling ids are tolerated by readers; indexes keep lookups cheap.
+     */
+    internal fun migrateToV3(db: SQLiteDatabase) = StudyMigrations.V3.forEach { db.execSQL(it) }
+
     // ---- prefs ----------------------------------------------------------------
-    var neetDate: LocalDate
-        get() = runCatching { LocalDate.parse(prefs.getString("neet", null)) }.getOrDefault(LocalDate.of(2027, 5, 2))
-        set(v) = prefs.edit().putString("neet", v.toString()).apply()
+    /** Optional user setting. Null until the user sets it; any previously saved explicit date is kept as-is. */
+    var neetDate: LocalDate?
+        get() = prefs.getString("neet", null)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        set(v) { prefs.edit().apply { if (v == null) remove("neet") else putString("neet", v.toString()) }.apply() }
 
     var targetScore: Int
         get() = prefs.getInt("target", 600)
@@ -85,16 +96,17 @@ class StudyDb private constructor(ctx: Context) : SQLiteOpenHelper(ctx.applicati
     fun insertLog(l: QLog): Long = writableDatabase.insert("question_log", null, ContentValues().apply {
         put("ts", l.ts); put("subject", l.subject.ordinal); put("chapter_id", l.chapterId); put("source", l.source.ordinal)
         put("correct", l.correct); put("wrong", l.wrong); put("skipped", l.skipped); put("minutes", l.minutes); put("verified", if (l.verified) 1 else 0); put("book_id", l.bookId)
+        put("agenda_task_id", l.agendaTaskId); put("focus_session_id", l.focusSessionId)
     })
 
     fun logs(sinceMs: Long = 0): List<QLog> {
         val out = ArrayList<QLog>()
         readableDatabase.rawQuery(
-            "SELECT id, ts, subject, chapter_id, source, correct, wrong, skipped, minutes, verified, book_id FROM question_log WHERE ts >= ? ORDER BY ts",
+            "SELECT id, ts, subject, chapter_id, source, correct, wrong, skipped, minutes, verified, book_id, agenda_task_id, focus_session_id FROM question_log WHERE ts >= ? ORDER BY ts",
             arrayOf(sinceMs.toString()),
         ).use {
             while (it.moveToNext()) out.add(QLog(it.getLong(0), it.getLong(1), Subject.values()[it.getInt(2)], it.getInt(3),
-                Source.values()[it.getInt(4)], it.getInt(5), it.getInt(6), it.getInt(7), it.getInt(8), it.getInt(9) == 1, it.getInt(10)))
+                Source.values()[it.getInt(4)], it.getInt(5), it.getInt(6), it.getInt(7), it.getInt(8), it.getInt(9) == 1, it.getInt(10), it.getString(11), it.getString(12)))
         }
         return out
     }

@@ -24,6 +24,7 @@ data class Book(val id: Int, val name: String, val active: Boolean = true)
 data class QLog(
     val id: Long, val ts: Long, val subject: Subject, val chapterId: Int, val source: Source,
     val correct: Int, val wrong: Int, val skipped: Int, val minutes: Int, val verified: Boolean, val bookId: Int = 0,
+    val agendaTaskId: String? = null, val focusSessionId: String? = null,
 ) { val attempted get() = correct + wrong }
 
 data class Mock(val id: Long, val date: String, val name: String, val c: List<Int>, val w: List<Int>, val s: List<Int>, val target: Int) {

@@ -187,7 +187,8 @@ class MainActivity : ComponentActivity() {
                                 Screen.Apps -> AppsScreen { back() }
                                 Screen.Callers -> CallersScreen { back() }
                                 Screen.Setup -> SetupScreen({ back() }, reqNotif, reqRole)
-                                Screen.Rules -> RulesScreen({ back() }, { go(Screen.NewRule) })
+                                Screen.Rules -> RulesScreen({ back() }, { go(Screen.NewRule) }, { go(Screen.StudyExempt) })
+                                Screen.StudyExempt -> com.pranav.focus.ui.StudyExemptionsScreen { back() }
                                 Screen.NewRule -> NewRuleScreen { back() }
                                 Screen.Mirror -> com.pranav.focus.ui.MirrorScreen { back() }
                                 Screen.Jar -> com.pranav.focus.ui.JarScreen { back() }

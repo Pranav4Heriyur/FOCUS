@@ -52,4 +52,5 @@ dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.xerial:sqlite-jdbc:3.46.0.0")
 }

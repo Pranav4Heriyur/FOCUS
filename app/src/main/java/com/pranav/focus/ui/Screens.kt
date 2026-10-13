@@ -69,7 +69,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 enum class Screen { Home, Focus, Study, Stats, Profile, Apps, Callers, Setup, Rules, NewRule, TimeBank, Mirror, Jar, Rank, Connections, Security, Workout,
-    Plan, PlanSubjects, PlanAdd, PlanEdit, PlanReorder, PlanDetail, PlanCalendar, PlanFocus, PlanSummary, PlanSettings }
+    Plan, PlanSubjects, PlanAdd, PlanEdit, PlanReorder, PlanDetail, PlanCalendar, PlanFocus, PlanSummary, PlanSettings, StudyExempt }
 
 
 // --------------------------------------------------------------------------------------
