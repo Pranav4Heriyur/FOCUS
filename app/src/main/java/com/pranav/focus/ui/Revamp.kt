@@ -83,8 +83,9 @@ private fun Eyebrow(t: String) = Text(t.uppercase(), color = C.Text2, fontSize =
 /** Animated pill switch (thumb slide 240 ms, surface lights up). */
 @Composable
 fun RSwitch(on: Boolean, locked: Boolean = false, onChange: (Boolean) -> Unit) {
+    val rm = reduceMotion()
     val x = remember { Animatable(if (on) 1f else 0f) }
-    LaunchedEffect(on) { x.animateTo(if (on) 1f else 0f, tween(if (reduceMotionNow()) 0 else 240, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(on) { x.animateTo(if (on) 1f else 0f, tween(if (rm) 0 else 240, easing = FastOutSlowInEasing)) }
     val track by animateColorAsState(if (on) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f), tween(240), label = "t")
     Box(
         Modifier.width(48.dp).height(28.dp).clip(CircleShape).background(track).border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
