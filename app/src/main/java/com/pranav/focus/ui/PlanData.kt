@@ -48,6 +48,10 @@ object PlanState {
     var date by mutableStateOf(LocalDate.now())
     var selectedId by mutableStateOf<String?>(null)
     private var loaded = false
+    private var seenToday = LocalDate.now()
+
+    /** If midnight passed while the app was open, jump the planner to the new day. */
+    fun syncToday() { val n = LocalDate.now(); if (n != seenToday) { seenToday = n; date = n } }
 
     fun load(ctx: Context) {
         if (loaded) return

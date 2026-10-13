@@ -79,6 +79,10 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
     var name by remember { mutableStateOf(store.lastName) }
     var subject by remember { mutableStateOf(store.lastSubject) }
     var strict by remember { mutableStateOf(store.strictLock) }
+    var askCustom by remember { mutableStateOf(false) }
+    if (askCustom) NameDialog("Custom time (minutes)", minutes.toString(), emptyList(), "", { askCustom = false }) { n, _ ->
+        n.filter { it.isDigit() }.toIntOrNull()?.let { minutes = it.coerceIn(1, 600) }; askCustom = false
+    }
 
     val pm = ctx.packageManager
     val appNames = remember(store.allowedApps) {
@@ -132,7 +136,7 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
                 val custom = minutes !in presets
                 Box(
                     Modifier.weight(1f).height(48.dp).clip(CircleShape).background(if (custom) C.White else C.Card)
-                        .border(1.dp, if (custom) C.White else C.Hairline, CircleShape),
+                        .border(1.dp, if (custom) C.White else C.Hairline, CircleShape).clickable { askCustom = true },
                     contentAlignment = Alignment.Center,
                 ) { Text(if (custom) "$minutes min" else "Custom", color = if (custom) C.Black else C.White, fontSize = 15.sp, fontWeight = FontWeight.Medium) }
             }

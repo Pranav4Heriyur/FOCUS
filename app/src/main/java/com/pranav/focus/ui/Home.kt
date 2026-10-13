@@ -104,13 +104,12 @@ fun HomeScreen(go: (Screen) -> Unit) {
         }
         Reveal(3) { ScreenTimeCard(usage, screenMs, budgetMin, usageOn) { go(Screen.Setup) } }
         Reveal(4) {
-            val items = remember(tick) { store.agenda.sortedBy { parseClock(it.time) } }
-            AgendaCard(items, doneIds, onToggle = { id ->
-                if (!store.reviewSubmitted()) {
-                    doneIds = if (id in doneIds) doneIds - id else doneIds + id
-                    store.putReviewDone(doneIds); AppState.dataTick++
-                }
-            }, onAdd = { go(Screen.Mirror) })
+            // The agenda IS today's Daily Planner (single source of truth).
+            PlanState.load(ctx)
+            val todays = PlanState.forDate(LocalDate.now())
+            val items = todays.map { com.pranav.focus.data.AgendaItem(it.id, it.title, it.subject, it.subject, fmtT(it.start).trimStart('0')) }
+            val doneSet = todays.filter { it.done }.map { it.id }.toSet()
+            AgendaCard(items, doneSet, onToggle = { id -> PlanState.get(id)?.let { PlanState.upsert(ctx, it.copy(done = !it.done)) } }, onAdd = { go(Screen.PlanAdd) })
         }
         Reveal(5) { TimeBankCard(day.earnedTotal, day.fromPool) { go(Screen.TimeBank) } }
         Reveal(6) { StudyCard(studyLogs) { go(Screen.Study) } }

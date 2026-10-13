@@ -63,6 +63,8 @@ import java.util.Locale
 @Composable
 fun PlanHost(screen: Screen, go: (Screen) -> Unit, back: () -> Unit) {
     PlanState.load(LocalContext.current)
+    PlanState.syncToday()
+    androidx.compose.runtime.LaunchedEffect(Unit) { PlanState.date = java.time.LocalDate.now() } // entering Plan always opens on today
     when (screen) {
         Screen.Plan -> PlanMain(go)
         Screen.PlanSubjects -> PlanSubjects(go, back)
