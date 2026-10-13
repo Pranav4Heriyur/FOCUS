@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                     onHome = { goHome() },
                 )
                 else -> {
-                    val showBar = screen in TAB_SCREENS
+                    val showBar = screen in TAB_SCREENS && screen != Screen.Focus // A2 reference has no bottom bar
                     androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
                         Box(Modifier.weight(1f).fillMaxWidth()) {
                             when (screen) {
