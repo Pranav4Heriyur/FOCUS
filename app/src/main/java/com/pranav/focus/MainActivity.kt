@@ -181,7 +181,16 @@ class MainActivity : ComponentActivity() {
                                 Screen.Home -> HomeScreen { go(it) }
                                 Screen.Focus -> FocusStartScreen { go(it) }
                                 Screen.Study -> com.pranav.focus.ui.StudyRoot { go(it) }
-                                Screen.Workout -> PlaceholderScreen("Workout", "Workout logger and Effective Load model arrive in Part C.")
+                                Screen.Workout -> com.pranav.focus.workout.ui.WorkoutHubScreen(
+                                    onOpenTemplate = { id -> com.pranav.focus.workout.ui.WorkoutEditing.templateId = id; go(Screen.WorkoutTemplateEditor) },
+                                    onOpenRoutine = { id -> com.pranav.focus.workout.ui.WorkoutEditing.routineId = id; go(Screen.WorkoutRoutineEditor) },
+                                )
+                                Screen.WorkoutTemplateEditor -> com.pranav.focus.workout.ui.TemplateBuilderScreen(
+                                    com.pranav.focus.workout.ui.WorkoutEditing.templateId,
+                                ) { back() }
+                                Screen.WorkoutRoutineEditor -> com.pranav.focus.workout.ui.RoutineBuilderScreen(
+                                    com.pranav.focus.workout.ui.WorkoutEditing.routineId,
+                                ) { back() }
                                 Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
                                 Screen.Profile -> com.pranav.focus.ui.ProfileScreenRef { go(it) }
                                 Screen.Apps -> AppsScreen { back() }
