@@ -60,6 +60,7 @@ data class Activity(
     val distM: Double, val movingS: Int, val avgHr: Double, val elevM: Double, val polyline: String,
 ) {
     val isRun get() = type == "Run" || type == "TrailRun" || type == "VirtualRun"
+    val isWalk get() = type == "Walk"
     val isRide get() = type == "Ride" || type == "VirtualRide" || type == "EBikeRide" || type == "GravelRide" || type == "MountainBikeRide"
     val isWorkout get() = type in setOf("Workout", "WeightTraining", "Crossfit", "HighIntensityIntervalTraining", "Yoga", "Pilates")
 }

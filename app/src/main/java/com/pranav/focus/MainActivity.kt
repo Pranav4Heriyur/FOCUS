@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
                                 Screen.Home -> HomeScreen { go(it) }
                                 Screen.Focus -> FocusStartScreen { go(it) }
                                 Screen.Study -> com.pranav.focus.ui.StudyRoot { go(it) }
-                                Screen.Workout -> PlaceholderScreen("Workout", "Workout logger and Effective Load model arrive in Part C.")
+                                Screen.Workout -> com.pranav.focus.ui.WorkoutRoot(back = { goHome() })
                                 Screen.Stats -> com.pranav.focus.ui.StatsScreen { go(it) }
                                 Screen.Profile -> com.pranav.focus.ui.ProfileScreenRef { go(it) }
                                 Screen.Apps -> AppsScreen { back() }
