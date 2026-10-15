@@ -74,7 +74,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
     var avatarVer by remember { mutableIntStateOf(0) }
     var doneIds by remember(tick) { mutableStateOf(store.reviewDone()) }
 
-    val act = remember(mode, tick) { store.activities.firstOrNull { if (mode == 0) it.isRun else it.isRide } }
+    val act = remember(mode, tick) { store.activities.firstOrNull { if (mode == 0) (it.isRun || it.isWalk) else it.isRide } }
     val connected = remember(tick) { HealthSync.connected(ctx) }
     val usage = remember(tick) { if (UsageHelper.hasAccess(ctx)) UsageHelper.today(ctx) else emptyList() }
     val usageOn = remember(tick) { UsageHelper.hasAccess(ctx) }
@@ -84,7 +84,7 @@ fun HomeScreen(go: (Screen) -> Unit) {
     val today = store.today()
     val studyLogs = remember(tick) { runCatching { StudyDb.get(ctx).logs(UsageHelper.midnight()) }.getOrDefault(emptyList()) }
     val focusMin = store.todayFocusMinutes
-    val workoutMin = remember(tick) { store.activitiesOn(today).filter { it.isWorkout }.sumOf { it.movingS } / 60 }
+    val workoutMin = remember(tick) { store.activitiesOn(today).filter { it.isWorkout || it.isWalk }.sumOf { it.movingS } / 60 }
     val runKm = remember(tick) { store.activitiesOn(today).filter { it.isRun }.sumOf { it.distM } / 1000.0 }
     val hour = LocalTime.now().hour
     val greeting = if (hour < 12) "Good morning," else if (hour < 17) "Good afternoon," else "Good evening,"

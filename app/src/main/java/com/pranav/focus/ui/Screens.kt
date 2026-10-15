@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.animation.core.animateFloatAsState
@@ -84,9 +85,7 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
     var subject by remember { mutableStateOf(store.lastSubject) }
     var strict by remember { mutableStateOf(store.strictLock) }
     var askCustom by remember { mutableStateOf(false) }
-    if (askCustom) NameDialog("Custom time (minutes)", minutes.toString(), emptyList(), "", { askCustom = false }) { n, _ ->
-        n.filter { it.isDigit() }.toIntOrNull()?.let { minutes = it.coerceIn(1, 600) }; askCustom = false
-    }
+    if (askCustom) CustomMinutesDialog(minutes, { askCustom = false }) { minutes = it; askCustom = false }
 
     val pm = ctx.packageManager
     val appNames = remember(store.allowedApps) {
@@ -98,7 +97,7 @@ fun FocusStartScreen(go: (Screen) -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             ScreenHeader("Start Focus Session", { go(Screen.Home) }, "Choose a time, set your focus, and lock in.")
-            MinutePicker(minutes) { d -> minutes = (minutes + d).coerceIn(5, 240) }
+            MinutePicker(minutes) { d -> minutes = (minutes + d).coerceIn(MIN_FOCUS, MAX_FOCUS) }
 
             Text("Session name", color = C.Text2, fontSize = 14.sp, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
             OutlinedTextField(
@@ -190,6 +189,41 @@ private fun SettingRow(icon: Int, title: String, sub: String, onEdit: () -> Unit
     }
 }
 
+const val MIN_FOCUS = 1
+const val MAX_FOCUS = 600
+
+/** Type any whole number of minutes (1-600). Numeric keyboard, field starts empty so typing 43 gives 43, not "2543". */
+@Composable
+private fun CustomMinutesDialog(current: Int, onDismiss: () -> Unit, onSet: (Int) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val value = text.toIntOrNull()
+    val valid = value != null && value in MIN_FOCUS..MAX_FOCUS
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss, containerColor = C.Sheet,
+        title = { Text("Custom time", color = C.White) },
+        text = {
+            Column {
+                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.Raised).border(1.dp, C.Hairline, RoundedCornerShape(14.dp)).padding(14.dp)) {
+                    if (text.isEmpty()) Text("Now $current min", color = C.Text3, fontSize = 20.sp)
+                    androidx.compose.foundation.text.BasicTextField(
+                        text, { t -> text = t.filter { it.isDigit() }.take(3) }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = C.White, fontSize = 20.sp),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(C.White),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { if (valid) onSet(value!!) }),
+                    )
+                }
+                Text(if (text.isNotEmpty() && !valid) "Enter $MIN_FOCUS to $MAX_FOCUS minutes" else "Minutes, $MIN_FOCUS to $MAX_FOCUS", color = C.Text2, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { if (valid) onSet(value!!) }, enabled = valid) { Text("Set", color = if (valid) C.White else C.Text3) } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel", color = C.Text2) } },
+    )
+}
+
 /** Drag up or down to change minutes in steps of 5. */
 @Composable
 private fun MinutePicker(value: Int, onDelta: (Int) -> Unit) {
@@ -214,7 +248,7 @@ private fun MinutePicker(value: Int, onDelta: (Int) -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             listOf(-10, -5).forEach { d ->
                 val v = value + d
-                Text(if (v >= 5) "$v" else " ", color = C.White.copy(alpha = if (d == -10) 0.18f else 0.38f), fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (v >= MIN_FOCUS) "$v" else " ", color = C.White.copy(alpha = if (d == -10) 0.18f else 0.38f), fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.SemiBold)
             }
             Row(
                 Modifier.padding(vertical = 4.dp).clip(CircleShape).border(1.dp, C.Hairline, CircleShape).background(C.Raised)
@@ -226,7 +260,7 @@ private fun MinutePicker(value: Int, onDelta: (Int) -> Unit) {
             }
             listOf(5, 10).forEach { d ->
                 val v = value + d
-                Text(if (v <= 240) "$v" else " ", color = C.White.copy(alpha = if (d == 5) 0.38f else 0.18f), fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (v <= MAX_FOCUS) "$v" else " ", color = C.White.copy(alpha = if (d == 5) 0.38f else 0.18f), fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }

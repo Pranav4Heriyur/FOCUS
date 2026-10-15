@@ -55,6 +55,7 @@ object HealthSync {
 
     private fun typeOf(t: Int): String = when (t) {
         ExerciseSessionRecord.EXERCISE_TYPE_RUNNING, ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> "Run"
+        ExerciseSessionRecord.EXERCISE_TYPE_WALKING, ExerciseSessionRecord.EXERCISE_TYPE_HIKING -> "Walk"
         ExerciseSessionRecord.EXERCISE_TYPE_BIKING, ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> "Ride"
         ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING, ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
         ExerciseSessionRecord.EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING, ExerciseSessionRecord.EXERCISE_TYPE_CALISTHENICS,
@@ -100,7 +101,7 @@ object HealthSync {
                 srcs.getOrPut(r.metadata.id.hashCode().toLong()) { sortedSetOf() }.add(srcName(r.metadata.dataOrigin.packageName))
                 out.add(Activity(
                     r.metadata.id.hashCode().toLong(), type,
-                    r.title?.takeIf { it.isNotBlank() } ?: when (type) { "Run" -> "Run"; "Ride" -> "Ride"; else -> "Workout" },
+                    r.title?.takeIf { it.isNotBlank() } ?: when (type) { "Run" -> "Run"; "Walk" -> "Walk"; "Ride" -> "Ride"; else -> "Workout" },
                     r.startTime.toEpochMilli(), r.startTime.atZone(zone).toLocalDate().toString(),
                     dist, Duration.between(r.startTime, r.endTime).seconds.toInt(), hr, elev, poly,
                 ))
@@ -124,7 +125,7 @@ object HealthSync {
                     distM = maxOf(a.distM, m.distM), movingS = maxOf(a.movingS, m.movingS),
                     avgHr = maxOf(a.avgHr, m.avgHr), elevM = maxOf(a.elevM, m.elevM),
                     polyline = base.polyline.ifEmpty { a.polyline.ifEmpty { m.polyline } },
-                    name = if (m.name in setOf("Run", "Ride", "Workout")) a.name else m.name,
+                    name = if (m.name in setOf("Run", "Walk", "Ride", "Workout")) a.name else m.name,
                 )
             }
             merged.forEach { st.putStr("src_" + it.id, srcs[it.id].orEmpty().joinToString(" + ")) }

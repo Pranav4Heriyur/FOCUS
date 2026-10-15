@@ -74,7 +74,7 @@ fun rememberSweep(target: Float, durationMs: Int = 600, delayMs: Int = 0): Float
 }
 
 fun agendaIconRes(key: String): Int = when (key) {
-    "Run" -> R.drawable.p1_run_sprinter
+    "Run", "Walk" -> R.drawable.p1_run_sprinter
     "Physics", "Focus" -> R.drawable.p1_study_book
     "Chemistry" -> R.drawable.p1_chemistry_flask
     "Biology" -> R.drawable.p1_biology_leaf
